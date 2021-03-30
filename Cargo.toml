@@ -1,0 +1,13 @@
+[workspace]
+
+members = [
+    "r2dbc",
+    "r2dbc-mysql",
+    "r2dbc-postgres",
+    "r2dbc-sqlite",
+    "r2dbc-cli",
+]
+
+
+# [dev-dependencies]
+# env_logger = "0.7.1"
