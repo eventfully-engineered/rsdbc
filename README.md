@@ -1,6 +1,6 @@
-# Rust Relations Database Connectivity (R2DBC)
+# Rust Relational Database Connectivity (R2DBC)
 
-Playing around with building a common API around accessing relation databases.
+Playing around with building a common API around accessing relational databases.
 
 NOTE: WIP. Placeholder. Nothing to see here at the moment.
 
