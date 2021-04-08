@@ -15,13 +15,13 @@ jobs:
       - name: Publish
         run: |
           cargo login ${{ secrets.CARGO_API_KEY }}
-          cd r2dbc
-          cargo publish
-          cd ../r2dbc-cli
-          cargo publish
+          # cd r2dbc
+          # cargo publish
           cd ../r2dbc-mysql
           cargo publish
           cd ../r2dbc-postgres
           cargo publish
           cd ../r2dbc-sqlite
+          cargo publish
+          cd ../r2dbc-cli
           cargo publish
