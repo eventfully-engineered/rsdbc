@@ -1,0 +1,17 @@
+[package]
+name = "r2dbc"
+description = "Rust Relation Database Connectivity (R2DBC) API"
+version = "0.0.1"
+authors = ["seancarroll"]
+edition = "2018"
+readme = "../README.md"
+keywords = ["sql"]
+categories = ["database"]
+repository = "https://github.com/eventfully-engineered/r2dbc"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = { version = "0.4.11", default-features = false, features = [ "clock" ], optional = true }
+log = "0.4"

@@ -1,0 +1,27 @@
+name: Publish
+
+on: workflow_dispatch
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Publish
+        run: |
+          cargo login ${{ secrets.CARGO_API_KEY }}
+          cd r2dbc
+          cargo publish
+          cd ../r2dbc-cli
+          cargo publish
+          cd ../r2dbc-mysql
+          cargo publish
+          cd ../r2dbc-postgres
+          cargo publish
+          cd ../r2dbc-sqlite
+          cargo publish

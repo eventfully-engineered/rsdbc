@@ -1,0 +1,18 @@
+[package]
+name = "r2dbc-postgres"
+description = "Postgres R2DBC Driver"
+version = "0.0.1"
+authors = ["seancarroll"]
+edition = "2018"
+readme = "../README.md"
+keywords = ["sql", "postgresql"]
+categories = ["database"]
+repository = "https://github.com/eventfully-engineered/r2dbc"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+r2dbc = { path = "../r2dbc", version = "0.0.1" }
+postgres = "0.19.0"
+sqlparser = "0.9.0"
