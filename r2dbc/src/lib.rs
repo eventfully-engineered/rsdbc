@@ -56,26 +56,6 @@ pub struct SQLWarning {
 /// R2DBC Result type
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Represents database driver that can be shared between threads, and can therefore implement
-/// a connection pool
-pub trait Driver: Sync + Send {
-    /// Create a connection to the database. Note that connections are intended to be used
-    /// in a single thread since most database connections are not thread-safe
-    fn connect(&self, url: &str, properties: HashMap<String, String>) -> Result<Box<dyn Connection>>;
-
-    /// Retrieves whether the driver thinks that it can open a connection to the given URL.
-    fn accepts_url(&self, url: &str) -> bool;
-
-    /// Retrieves the driver's major version number.
-    fn get_major_version(&self) -> i32;
-
-    /// Gets the driver's minor version number.
-    fn get_minor_version(&self) -> i32;
-
-    // Gets information about the possible properties for this driver.
-    // fn get_property_info(&self, url: &str, info: HashMap) -> DriverPropertyInfo
-}
-
 pub struct ConfigurationOption {
 
 }
