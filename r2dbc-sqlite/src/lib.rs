@@ -57,38 +57,17 @@ impl SqliteDriver {
 // /// The database filename is not allowed to be a symbolic link.
 // const SQLITE_OPEN_NOFOLLOW = 0x0100_0000;
 
-impl r2dbc::Driver for SqliteDriver {
-    // these are the default flags
-    // OpenFlags::SQLITE_OPEN_READ_WRITE
-    // | OpenFlags::SQLITE_OPEN_CREATE
-    // | OpenFlags::SQLITE_OPEN_NO_MUTEX
-    // | OpenFlags::SQLITE_OPEN_URI
+// these are the default flags
+// OpenFlags::SQLITE_OPEN_READ_WRITE
+// | OpenFlags::SQLITE_OPEN_CREATE
+// | OpenFlags::SQLITE_OPEN_NO_MUTEX
+// | OpenFlags::SQLITE_OPEN_URI
 
 
-    // in_memory
-    // in_memory with flags
-    // path
-    // path with flags
-
-    fn connect(&self, _url: &str, properties: HashMap<String, String>) -> r2dbc::Result<Box<dyn r2dbc::Connection>> {
-        // rusqlite::Connection::p
-
-        let c = rusqlite::Connection::open_in_memory().map_err(to_r2dbc_err)?;
-        Ok(Box::new(SqliteConnection::new(c)))
-    }
-
-    fn accepts_url(&self, url: &str) -> bool {
-        todo!()
-    }
-
-    fn get_major_version(&self) -> i32 {
-        todo!()
-    }
-
-    fn get_minor_version(&self) -> i32 {
-        todo!()
-    }
-}
+// in_memory
+// in_memory with flags
+// path
+// path with flags
 
 struct SqliteConnection<'conn> {
     // TODO: given Transaction can reference a conn i'm not sure this is feasible
