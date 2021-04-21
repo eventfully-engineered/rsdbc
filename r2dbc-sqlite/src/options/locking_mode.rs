@@ -1,3 +1,5 @@
+// From SQLx - https://github.com/launchbadge/sqlx/blob/master/sqlx-core/src/sqlite/options/locking_mode.rs
+
 #[derive(Debug, Clone)]
 pub enum SqliteLockingMode {
     Normal,

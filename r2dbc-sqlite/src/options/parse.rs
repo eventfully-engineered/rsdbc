@@ -1,14 +1,12 @@
+// From SQLx - https://github.com/launchbadge/sqlx/blob/master/sqlx-core/src/sqlite/options/parse.rs
 // https://www.sqlite.org/uri.html
 
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::str::FromStr;
 use crate::options::SqliteConnectOptions;
 use percent_encoding::percent_decode_str;
 use r2dbc::Error;
-
-static IN_MEMORY_DB_SEQ: AtomicUsize = AtomicUsize::new(0);
 
 impl FromStr for SqliteConnectOptions {
     type Err = Error;
@@ -27,12 +25,9 @@ impl FromStr for SqliteConnectOptions {
 
         if database == ":memory:" {
             options.in_memory = true;
+            // setting shared_cache to true. See https://www.sqlite.org/sharedcache.html
             options.shared_cache = true;
-            let seqno = IN_MEMORY_DB_SEQ.fetch_add(1, Ordering::Relaxed);
-            // TODO: I dont like this
-            // prefer something like https://github.com/xerial/sqlite-jdbc/blob/21055a2b75b70039bd9f688deea2408d7d1c2114/src/main/java/org/sqlite/JDBC.java#L98
-            // or can this just be :memory:
-            options.filename = Cow::Owned(PathBuf::from(format!("file:sqlx-in-memory-{}", seqno)));
+            options.filename = Cow::Owned(PathBuf::from(database));
         } else {
             // % decode to allow for `?` or `#` in the filename
             options.filename = Cow::Owned(
@@ -40,8 +35,7 @@ impl FromStr for SqliteConnectOptions {
                     &*percent_decode_str(database)
                         .decode_utf8()
                         .map_err(|e| Error::config(e.to_string()))?,
-                )
-                    .to_path_buf(),
+                ).to_path_buf(),
             );
         }
 
@@ -102,8 +96,7 @@ impl FromStr for SqliteConnectOptions {
                             format!(
                                 "unknown query parameter `{}` while parsing connection URI",
                                 key
-                            )
-                                .into(),
+                            ).into(),
                         ));
                     }
                 }
@@ -115,7 +108,7 @@ impl FromStr for SqliteConnectOptions {
 }
 
 #[test]
-fn test_parse_in_memory() -> Result<(), Error> {
+fn parse_in_memory() -> Result<(), Error> {
     let options: SqliteConnectOptions = "sqlite::memory:".parse()?;
     assert!(options.in_memory);
     assert!(options.shared_cache);
@@ -136,7 +129,7 @@ fn test_parse_in_memory() -> Result<(), Error> {
 }
 
 #[test]
-fn test_parse_read_only() -> Result<(), Error> {
+fn parse_read_only() -> Result<(), Error> {
     let options: SqliteConnectOptions = "sqlite://a.db?mode=ro".parse()?;
     assert!(options.read_only);
     assert_eq!(&*options.filename.to_string_lossy(), "a.db");
@@ -145,10 +138,22 @@ fn test_parse_read_only() -> Result<(), Error> {
 }
 
 #[test]
-fn test_parse_shared_in_memory() -> Result<(), Error> {
+fn parse_shared_in_memory() -> Result<(), Error> {
     let options: SqliteConnectOptions = "sqlite://a.db?cache=shared".parse()?;
     assert!(options.shared_cache);
     assert_eq!(&*options.filename.to_string_lossy(), "a.db");
+
+    Ok(())
+}
+
+#[test]
+fn from_str() -> Result<(), Error> {
+    let options = SqliteConnectOptions::from_str("sqlite://a.db")?;
+    assert_eq!(&*options.filename.to_string_lossy(), "a.db");
+    assert!(!options.shared_cache);
+    assert!(!options.in_memory);
+    assert!(!options.read_only);
+    assert!(!options.create_if_missing);
 
     Ok(())
 }

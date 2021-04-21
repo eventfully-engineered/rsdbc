@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::io;
+use futures_core::future::BoxFuture;
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -181,8 +182,23 @@ pub enum ValidationDepth {
     Remote,
 }
 
+pub trait ConnectionFactory<'conn> {
+    type Connection: Connection + ?Sized;
+
+    /// Establish a new database connection with the options specified by `self`.
+    fn connect(&self) -> BoxFuture<'_, Result<Self::Connection>>
+        where
+            Self::Connection: Sized;
+}
+
 /// Represents a connection to a database
 pub trait Connection {
+    // trait attributes
+    // TransactionDefinition
+    // Batch
+    // Statement...this could be simple or prepared so probably doesnt work here
+    // ConnectionMetadata
+
 
     /// Begins a new transaction.
     fn begin_transaction(&mut self) -> Result<()>;
@@ -192,6 +208,12 @@ pub trait Connection {
     /// connection configuration.
     fn begin_transaction_with_definition(&mut self, definition: &dyn TransactionDefinition);
 
+
+    // Explicitly close this database connection.
+    //
+    // This method is **not required** for safe and consistent operation. However, it is
+    // recommended to call it instead of letting a connection `drop` as the database backend
+    // will be faster at cleaning up resources.
     /// Releases this Connection object's database and resources immediately instead of waiting
     /// for them to be automatically released.
     fn close(&mut self) -> Result<()>;
@@ -613,7 +635,7 @@ pub enum Nullability {
 }
 
 
-/// RDBC Data Types
+/// R2DBC Data Types
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DataType {
     Bool,

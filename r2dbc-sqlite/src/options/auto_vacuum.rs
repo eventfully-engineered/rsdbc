@@ -1,3 +1,5 @@
+// From SQLx - https://github.com/launchbadge/sqlx/blob/master/sqlx-core/src/sqlite/options/auto_vacuum.rs
+
 #[derive(Debug, Clone)]
 pub enum SqliteAutoVacuum {
     None,

@@ -1,3 +1,5 @@
+// From SQLx - https://github.com/launchbadge/sqlx/blob/master/sqlx-core/src/sqlite/options/mod.rs
+
 mod auto_vacuum;
 mod journal_mode;
 mod locking_mode;
@@ -13,6 +15,21 @@ pub use synchronous::SqliteSynchronous;
 
 use std::{borrow::Cow, time::Duration};
 use std::path::Path;
+use r2dbc::{ConnectionFactory, Error};
+use crate::{SqliteConnection, to_r2dbc_err};
+use crate::Result;
+use futures_core::future::BoxFuture;
+use rusqlite::{Connection, OpenFlags};
+use std::sync::Mutex;
+use rusqlite::params;
+
+// // TODO:
+// // - ^ the trait `From<rusqlite::Error>` is not implemented for `r2dbc::Error`
+// impl From<RusqliteError> for Error {
+//     fn from(err: rusqlite::Error) -> Self {
+//         Error::General(err.to_string())
+//     }
+// }
 
 
 #[derive(Clone, Debug)]
@@ -32,7 +49,7 @@ pub struct SqliteConnectOptions {
     pub(crate) auto_vacuum: SqliteAutoVacuum,
 }
 
-
+// TODO: document...see new
 impl Default for SqliteConnectOptions {
     fn default() -> Self {
         Self::new()
@@ -40,6 +57,8 @@ impl Default for SqliteConnectOptions {
 }
 
 impl SqliteConnectOptions {
+
+    // TODO: document these options
     pub fn new() -> Self {
         Self {
             filename: Cow::Borrowed(Path::new(":memory:")),
@@ -49,11 +68,11 @@ impl SqliteConnectOptions {
             foreign_keys: true,
             shared_cache: false,
             statement_cache_capacity: 100,
-            journal_mode: SqliteJournalMode::Wal,
+            journal_mode: Default::default(),
             locking_mode: Default::default(),
             busy_timeout: Duration::from_secs(5),
             // log_settings: Default::default(),
-            synchronous: SqliteSynchronous::Full,
+            synchronous: Default::default(),
             auto_vacuum: Default::default(),
         }
     }
@@ -125,7 +144,8 @@ impl SqliteConnectOptions {
         self
     }
 
-    /// Sets the [synchronous](https://www.sqlite.org/pragma.html#pragma_synchronous) setting for the database connection.
+    /// Sets the [synchronous](https://www.sqlite.org/pragma.html#pragma_synchronous) setting for
+    /// the database connection.
     ///
     /// The default synchronous settings is FULL. However, if durability is not a concern,
     /// then NORMAL is normally all one needs in WAL mode.
@@ -134,11 +154,94 @@ impl SqliteConnectOptions {
         self
     }
 
-    /// Sets the [auto_vacuum](https://www.sqlite.org/pragma.html#pragma_auto_vacuum) setting for the database connection.
+    /// Sets the [auto_vacuum](https://www.sqlite.org/pragma.html#pragma_auto_vacuum) setting for
+    /// the database connection.
     ///
     /// The default auto_vacuum setting is NONE.
     pub fn auto_vacuum(mut self, auto_vacuum: SqliteAutoVacuum) -> Self {
         self.auto_vacuum = auto_vacuum;
         self
+    }
+
+    /// Set the [`SQLITE_OPEN_SHAREDCACHE` flag](https://sqlite.org/sharedcache.html).
+    ///
+    /// By default, this is disabled.
+    pub fn shared_cache(mut self, on: bool) -> Self {
+        self.shared_cache = on;
+        self
+    }
+}
+
+impl<'conn> ConnectionFactory<'conn> for SqliteConnectOptions {
+    type Connection = SqliteConnection<'conn>;
+
+    fn connect(&self) -> BoxFuture<'_, Result<Self::Connection>>
+        where
+            Self::Connection: Sized,
+    {
+        Box::pin(async move {
+            let mut flags = OpenFlags::SQLITE_OPEN_NO_MUTEX;
+
+            flags |= if self.read_only {
+                OpenFlags::SQLITE_OPEN_READ_ONLY
+            } else if self.create_if_missing {
+                OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE
+            } else {
+                OpenFlags::SQLITE_OPEN_READ_WRITE
+            };
+
+            if self.in_memory {
+                flags |= OpenFlags::SQLITE_OPEN_MEMORY;
+            }
+
+            flags |= if self.shared_cache {
+                OpenFlags::SQLITE_OPEN_SHARED_CACHE
+            } else {
+                OpenFlags::SQLITE_OPEN_PRIVATE_CACHE
+            };
+
+            let conn =
+                rusqlite::Connection::open_with_flags(self.filename.to_path_buf(), flags)
+                    .map_err(to_r2dbc_err)?;
+
+            conn.busy_timeout(self.busy_timeout);
+
+            // execute pragma
+            let init = format!(
+                "PRAGMA locking_mode = {}; PRAGMA journal_mode = {}; PRAGMA foreign_keys = {}; PRAGMA synchronous = {}; PRAGMA auto_vacuum = {}",
+                self.locking_mode.as_str(),
+                self.journal_mode.as_str(),
+                if self.foreign_keys { "ON" } else { "OFF" },
+                self.synchronous.as_str(),
+                self.auto_vacuum.as_str(),
+            );
+            conn.execute(init.as_str(), params![]).map_err(to_r2dbc_err)?;
+
+            // TODO: make this better
+            Ok(SqliteConnection {
+                conn: Mutex::new(Some(conn)),
+                transaction: None
+            })
+
+
+            // let mut conn = establish(self).await?;
+            //
+            // // send an initial sql statement comprised of options
+            // //
+            // // Note that locking_mode should be set before journal_mode; see
+            // // https://www.sqlite.org/wal.html#use_of_wal_without_shared_memory .
+            // let init = format!(
+            //     "PRAGMA locking_mode = {}; PRAGMA journal_mode = {}; PRAGMA foreign_keys = {}; PRAGMA synchronous = {}; PRAGMA auto_vacuum = {}",
+            //     self.locking_mode.as_str(),
+            //     self.journal_mode.as_str(),
+            //     if self.foreign_keys { "ON" } else { "OFF" },
+            //     self.synchronous.as_str(),
+            //     self.auto_vacuum.as_str(),
+            // );
+            //
+            // conn.execute(&*init).await?;
+            //
+            // Ok(conn)
+        })
     }
 }
