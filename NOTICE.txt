@@ -1,0 +1,4 @@
+Rust Relational Database Connectivity (R2DBC)
+
+This product includes software from the LaunchBadge From SQLx (Apache 2.0 / MIT)
+https://github.com/launchbadge/sqlx
