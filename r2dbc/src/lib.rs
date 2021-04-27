@@ -193,6 +193,7 @@ pub trait ConnectionFactory<'conn> {
 
 /// Represents a connection to a database
 pub trait Connection {
+    type Statement: Statement + ?Sized;
     // trait attributes
     // TransactionDefinition
     // Batch
@@ -230,19 +231,19 @@ pub trait Connection {
     /// * `name`: name the name of the savepoint to create.
     ///
     /// UnsupportedOperationException if savepoints are not supported
-    fn create_savepoint(&mut self, name: String);
+    fn create_savepoint(&mut self, name: &str);
 
     /// Creates a new statement for building a statement-based request.
     /// Arguments:
     ///
     /// * `name`: the SQL of the statement
     ///
-    fn create_statement(&mut self, sql: String) -> Result<Box<dyn Statement>>;
+    fn create_statement(&mut self, sql: &str) -> Result<Box<Self::Statement>>;
 
     /// Returns the auto-commit mode for this connection.
     ///
     /// @return true if the connection is in auto-commit mode; false otherwise.
-    fn is_auto_commit(&self) -> bool;
+    fn is_auto_commit(&mut self) -> bool;
 
     /// Returns the [ConnectionMetadata] about the product this [Connection] is connected to.
     fn metadata(&mut self) -> Result<Box<dyn ConnectionMetadata>>;
@@ -263,7 +264,7 @@ pub trait Connection {
     /// Arguments:
     ///
     /// * `name`: the name of the savepoint to release
-    fn release_savepoint(&mut self, name: String);
+    fn release_savepoint(&mut self, name: &str);
 
     /// Rolls back the current transaction.
     fn rollback_transaction(&mut self);

@@ -219,8 +219,9 @@ impl<'conn> ConnectionFactory<'conn> for SqliteConnectOptions {
 
             // TODO: make this better
             Ok(SqliteConnection {
-                conn: Mutex::new(Some(conn)),
-                transaction: None
+                // conn: Mutex::new(Some(&conn)),
+                conn: Some(&conn),
+                // transaction: None
             })
 
 

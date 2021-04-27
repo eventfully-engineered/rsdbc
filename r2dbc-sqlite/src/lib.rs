@@ -8,6 +8,13 @@ use crate::connection::SqliteConnectionMetadata;
 use r2dbc::R2dbcError::General;
 use rusqlite::Error as RusqliteError;
 use std::sync::Mutex;
+use std::rc::Rc;
+
+// https://tedspence.com/investigating-rust-with-sqlite-53d1f9a41112
+// https://www.reddit.com/r/rust/comments/dqa4t3/how_to_put_two_variables_one_borrows_from_other/
+// https://bryce.fisher-fleig.org/strategies-for-returning-references-in-rust/
+
+
 
 /// Convert a Sqlite error into an R2DBC error
 fn to_r2dbc_err(e: rusqlite::Error) -> r2dbc::Error {
@@ -26,13 +33,6 @@ fn to_r2dbc_err(e: rusqlite::Error) -> r2dbc::Error {
 //     }
 // }
 
-pub struct SqliteDriver {}
-
-impl SqliteDriver {
-    pub fn new() -> Self {
-        SqliteDriver {}
-    }
-}
 
 
 // const SQLITE_OPEN_READ_ONLY     = ffi::SQLITE_OPEN_READONLY;
@@ -71,38 +71,51 @@ impl SqliteDriver {
 
 pub struct SqliteConnection<'conn> {
     // TODO: given Transaction can reference a conn i'm not sure this is feasible
-    conn: Mutex<Option<rusqlite::Connection>>,
-    transaction: Option<rusqlite::Transaction<'conn>>,
+    // conn: Mutex<Option<&'conn rusqlite::Connection>>,
+    // this needs to be a reference to Rusqlite::Connection otherwise we get an error like
+    // move occurs because `self.conn` has type `Option<rusqlite::Connection>`, which does not implement the `Copy` trait
+    // help: consider borrowing the `Option`'s content: `self.conn.as_ref()`
+    //
+    // because of E0106 it requires a lifetime
+    conn: Option<&'conn rusqlite::Connection>,
+    // transaction: Option<rusqlite::Transaction<'conn>>,
 }
 
-impl SqliteConnection<'_> {
+impl<'conn> SqliteConnection<'conn> {
 
-    pub fn new(conn: rusqlite::Connection) -> Self {
-        Self { conn: Mutex::new(Some(conn)), transaction: None }
+    pub fn new(conn: &'conn rusqlite::Connection) -> Self {
+        // Self { conn: Mutex::new(Some(conn)), transaction: None }
+        // Self { conn: Some(conn), transaction: None }
+        Self {
+            conn: Some(conn)
+        }
     }
 
     fn drop(&mut self) {
-        if let Some(transaction) = self.transaction.take() {
-            let _ = transaction.rollback();
-        }
+        // if let Some(transaction) = self.transaction.take() {
+        //     let _ = transaction.rollback();
+        // }
     }
 }
 
-impl r2dbc::Connection for SqliteConnection<'_> {
+impl<'conn> r2dbc::Connection for SqliteConnection<'conn> {
+    type Statement = SqliteStatement<'conn>;
 
     // TODO: result?
     fn begin_transaction(&mut self) -> Result<()> {
         // TODO: call begin_transaction_with_definition with an empty instance
-        let mut connection = self.conn.lock().unwrap().take().unwrap();
-        connection.transaction().map_err(to_r2dbc_err);
+        // let mut connection = self.conn.take().unwrap();
+        // let mut connection = self.conn.lock().unwrap().take().unwrap();
+        // connection.transaction().map_err(to_r2dbc_err);
         // self.transaction = Some(trans);
         Ok(())
     }
 
     fn begin_transaction_with_definition(&mut self, definition: &dyn TransactionDefinition) {
         // TODO: convert definition to TransactionBehavior
-        let mut connection = self.conn.lock().unwrap().take().unwrap();
-        connection.transaction_with_behavior(TransactionBehavior::Deferred);
+        // let mut connection = self.conn.take().unwrap();
+        // let mut connection = self.conn.lock().unwrap().take().unwrap();
+        // connection.transaction_with_behavior(TransactionBehavior::Deferred);
     }
 
     // https://www.reddit.com/r/rust/comments/2t8i2s/yet_another_problem_with_mutable_struct_members/
@@ -111,7 +124,8 @@ impl r2dbc::Connection for SqliteConnection<'_> {
         // let close_result = self.conn.get_mut().unwrap().close();
 
         // self.conn.lock().unwrap().map(|c| c.close());
-        let mut _c = self.conn.get_mut().unwrap().take();
+        let mut _c = self.conn.take();
+        // let mut _c = self.conn.get_mut().unwrap().take();
         _c = None;
 
         // close_result.map_err(move |e| to_r2dbc_err(e.1))?;
@@ -119,9 +133,9 @@ impl r2dbc::Connection for SqliteConnection<'_> {
     }
 
     fn commit_transaction(&mut self) {
-        if let Some(transaction) = self.transaction.take() {
-            let _ = transaction.commit();
-        }
+        // if let Some(transaction) = self.transaction.take() {
+        //     let _ = transaction.commit();
+        // }
     }
 
     fn create_batch(&mut self) -> Result<Box<dyn Batch>> {
@@ -130,21 +144,43 @@ impl r2dbc::Connection for SqliteConnection<'_> {
 
     // TODO: return result
     // UnsupportedOperationException if not supported
-    fn create_savepoint(&mut self, name: String) {
-        if self.transaction.is_none() {
-            // return error
-        }
+    fn create_savepoint(&mut self, name: &str) {
+        // if self.transaction.is_none() {
+        //     // return error
+        // }
 
         // let sp = self.conn.savepoint_with_name(name)?;
         // let savepoint = self.transaction.unwrap().savepoint_with_name(name)?;
     }
 
-    fn create_statement(&mut self, sql: String) -> Result<Box<dyn Statement>> {
-        todo!()
+    fn create_statement(&mut self, sql: &str) -> Result<Box<Self::Statement>> {
+        // let mut c = self.conn.take();
+        // let stmt = c.unwrap()
+        //     .prepare(sql)
+        //     .map_err(to_r2dbc_err)?;
+
+        // let c: &'conn rusqlite::Connection = self.conn.unwrap();
+
+        let stmt: rusqlite::Statement<'conn> = self.conn.unwrap()
+            .prepare(sql)
+            .map_err(to_r2dbc_err)?;
+
+        // let stmt = self.conn.get_mut().unwrap().take().unwrap()
+        //     .prepare(sql)
+        //     .map_err(to_r2dbc_err)?;
+
+        // let stmt = self.conn.lock().unwrap().take().unwrap()
+        //     .prepare(sql)
+        //     .map_err(to_r2dbc_err)?;
+
+        Ok(Box::new(SqliteStatement {
+            stmt
+        }))
     }
 
-    fn is_auto_commit(&self) -> bool {
-        let connection = self.conn.lock().unwrap().take().unwrap();
+    fn is_auto_commit(&mut self) -> bool {
+        let connection = self.conn.take().unwrap();
+        // let connection = self.conn.lock().unwrap().take().unwrap();
         connection.is_autocommit()
     }
 
@@ -156,7 +192,7 @@ impl r2dbc::Connection for SqliteConnection<'_> {
         todo!()
     }
 
-    fn release_savepoint(&mut self, name: String) {
+    fn release_savepoint(&mut self, name: &str) {
         todo!()
         // do we need to keep savepoint? I dont see rusqlite giving us an option to get a savepoint
 
@@ -331,8 +367,53 @@ impl<'a> Iterator for ValuesIter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use r2dbc::{Connection, DataType};
+    use r2dbc::{Connection, DataType, ConnectionFactory};
     use std::{collections::HashMap, sync::Arc};
+    use crate::options::SqliteConnectOptions;
+
+    // // low-level, Executor trait
+    // conn.execute("BEGIN").await?; // unprepared, simple query
+    // conn.execute(sqlx::query("DELETE FROM table")).await?; // prepared, cached query
+
+    // sqlx::query("DELETE FROM table").execute(&mut conn).await?;
+    // sqlx::query("DELETE FROM table").execute(&pool).await?;
+
+    // let mut rows = sqlx::query("SELECT * FROM users WHERE email = ?")
+    // .bind(email)
+    // .fetch(&mut conn);
+    //
+    // while let Some(row) = rows.try_next().await? {
+    //     // map the row into a user-defined domain type
+    //     let email: &str = row.try_get("email")?;
+    // }
+
+//     let mut stream = sqlx::query("SELECT * FROM users")
+//     .map(|row: PgRow| {
+// // map the row into a user-defined domain type
+// })
+//     .fetch(&mut conn);
+//     #[derive(sqlx::FromRow)]
+//     struct User { name: String, id: i64 }
+//
+//     let mut stream = sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = ? OR name = ?")
+//     .bind(user_email)
+//     .bind(user_name)
+//     .fetch(&mut conn);
+
+
+
+    #[test]
+    fn execute_query() -> r2dbc::Result<()> {
+        let mut connection = SqliteConnectOptions::new().connect().await?;
+        let stmt = connection.create_statement("SELECT 1").unwrap();
+        let mut rs = stmt.execute();
+
+        while rs.next() {
+            println!("{:?}", rs.get_string(1));
+        }
+
+        Ok(())
+    }
 
     // #[test]
     // fn execute_query() -> r2dbc::Result<()> {
