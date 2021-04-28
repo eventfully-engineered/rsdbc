@@ -183,7 +183,7 @@ pub enum ValidationDepth {
 }
 
 pub trait ConnectionFactory<'conn> {
-    type Connection: Connection + ?Sized;
+    type Connection: Connection<'conn> + ?Sized;
 
     /// Establish a new database connection with the options specified by `self`.
     fn connect(&self) -> BoxFuture<'_, Result<Self::Connection>>
@@ -192,8 +192,8 @@ pub trait ConnectionFactory<'conn> {
 }
 
 /// Represents a connection to a database
-pub trait Connection {
-    type Statement: Statement + ?Sized;
+pub trait Connection<'conn> {
+    type Statement: Statement<'conn> + ?Sized;
     // trait attributes
     // TransactionDefinition
     // Batch
@@ -390,7 +390,7 @@ pub trait Connection {
 }
 
 /// Represents an executable statement
-pub trait Statement {
+pub trait Statement<'conn> {
 
     // from java r2dbc
     fn add(&mut self) -> &mut Self where Self: Sized; //Box<dyn A>

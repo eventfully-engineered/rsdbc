@@ -22,6 +22,7 @@ use futures_core::future::BoxFuture;
 use rusqlite::{Connection, OpenFlags};
 use std::sync::Mutex;
 use rusqlite::params;
+use std::rc::Rc;
 
 // // TODO:
 // // - ^ the trait `From<rusqlite::Error>` is not implemented for `r2dbc::Error`
@@ -220,8 +221,8 @@ impl<'conn> ConnectionFactory<'conn> for SqliteConnectOptions {
             // TODO: make this better
             Ok(SqliteConnection {
                 // conn: Mutex::new(Some(&conn)),
-                conn: Some(&conn),
-                // transaction: None
+                conn: Some(Rc::new(conn)),
+                transaction: None
             })
 
 

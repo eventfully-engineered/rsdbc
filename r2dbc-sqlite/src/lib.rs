@@ -77,17 +77,21 @@ pub struct SqliteConnection<'conn> {
     // help: consider borrowing the `Option`'s content: `self.conn.as_ref()`
     //
     // because of E0106 it requires a lifetime
-    conn: Option<&'conn rusqlite::Connection>,
-    // transaction: Option<rusqlite::Transaction<'conn>>,
+    conn: Option<Rc<rusqlite::Connection>>,
+    transaction: Option<rusqlite::Transaction<'conn>>,
 }
 
 impl<'conn> SqliteConnection<'conn> {
 
-    pub fn new(conn: &'conn rusqlite::Connection) -> Self {
+    pub fn new(conn: rusqlite::Connection) -> Self {
         // Self { conn: Mutex::new(Some(conn)), transaction: None }
         // Self { conn: Some(conn), transaction: None }
+        // Self {
+        //     conn: Some(Rc::new(conn))
+        // }
         Self {
-            conn: Some(conn)
+            conn: Some(Rc::new(conn)),
+            transaction: None,
         }
     }
 
@@ -98,7 +102,7 @@ impl<'conn> SqliteConnection<'conn> {
     }
 }
 
-impl<'conn> r2dbc::Connection for SqliteConnection<'conn> {
+impl<'conn> r2dbc::Connection<'conn> for SqliteConnection<'conn> {
     type Statement = SqliteStatement<'conn>;
 
     // TODO: result?
@@ -161,9 +165,9 @@ impl<'conn> r2dbc::Connection for SqliteConnection<'conn> {
 
         // let c: &'conn rusqlite::Connection = self.conn.unwrap();
 
-        let stmt: rusqlite::Statement<'conn> = self.conn.unwrap()
-            .prepare(sql)
-            .map_err(to_r2dbc_err)?;
+        // let stmt: rusqlite::Statement = self.conn.as_ref().unwrap()
+        //     .prepare(sql)
+        //     .map_err(to_r2dbc_err)?;
 
         // let stmt = self.conn.get_mut().unwrap().take().unwrap()
         //     .prepare(sql)
@@ -174,7 +178,7 @@ impl<'conn> r2dbc::Connection for SqliteConnection<'conn> {
         //     .map_err(to_r2dbc_err)?;
 
         Ok(Box::new(SqliteStatement {
-            stmt
+            stmt: None
         }))
     }
 
@@ -237,11 +241,11 @@ impl<'conn> Drop for SqliteConnection<'conn> {
 }
 
 // TODO: Do we need this? Can we just use CallableStatement/PreparedStatement
-struct SqliteStatement<'a> {
-    stmt: rusqlite::Statement<'a>,
+pub struct SqliteStatement<'a> {
+    stmt: Option<rusqlite::Statement<'a>>,
 }
 
-impl r2dbc::Statement for SqliteStatement<'_> {
+impl<'conn> r2dbc::Statement<'conn> for SqliteStatement<'conn> {
     fn add(&mut self) -> &mut Self where Self: Sized {
         todo!()
     }
