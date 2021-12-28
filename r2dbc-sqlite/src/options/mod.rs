@@ -5,6 +5,7 @@ mod journal_mode;
 mod locking_mode;
 mod synchronous;
 mod parse;
+mod mode;
 
 // TODO: add log settings
 // use crate::connection::LogSettings;
@@ -19,7 +20,7 @@ use std::path::Path;
 use std::pin::Pin;
 use crate::{SqliteConnection, to_r2dbc_err};
 use crate::Result;
-use futures_core::future::BoxFuture;
+use futures::future::BoxFuture;
 use rusqlite::{Connection, OpenFlags};
 use std::sync::{Arc, Mutex};
 use rusqlite::params;

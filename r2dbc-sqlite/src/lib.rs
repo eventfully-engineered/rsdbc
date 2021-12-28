@@ -1,5 +1,6 @@
-mod connection;
-mod options;
+pub mod connection;
+pub mod options;
+pub mod error;
 
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -8,9 +9,8 @@ use crate::connection::SqliteConnectionMetadata;
 use rusqlite::Error as RusqliteError;
 use std::sync::{Arc, Mutex};
 use std::rc::Rc;
-use r2dbc::{DatabaseMetadata, ResultSetMetaData};
 use r2dbc_core::connection::{Batch, ConnectionMetadata, IsolationLevel, SQLResult, Statement, ValidationDepth};
-use r2dbc_core::Result;
+use r2dbc_core::{DatabaseMetadata, Result, ResultSetMetaData};
 
 // https://tedspence.com/investigating-rust-with-sqlite-53d1f9a41112
 // https://www.reddit.com/r/rust/comments/dqa4t3/how_to_put_two_variables_one_borrows_from_other/
@@ -304,7 +304,7 @@ impl DatabaseMetadata for SqliteDatabaseMetadata {
 
 }
 
-impl<'stmt> r2dbc::ResultSet for SqliteResultSet<'stmt> {
+impl<'stmt> r2dbc_core::ResultSet for SqliteResultSet<'stmt> {
     fn meta_data(&self) -> Result<Box<dyn ResultSetMetaData>> {
         todo!()
     }
@@ -350,16 +350,16 @@ impl<'stmt> r2dbc::ResultSet for SqliteResultSet<'stmt> {
     }
 }
 
-fn to_r2dbc_type(t: Option<&str>) -> r2dbc::DataType {
+fn to_r2dbc_type(t: Option<&str>) -> r2dbc_core::DataType {
     //TODO implement for real
     match t {
-        Some("INT") => r2dbc::DataType::Integer,
-        _ => r2dbc::DataType::Utf8,
+        Some("INT") => r2dbc_core::DataType::Integer,
+        _ => r2dbc_core::DataType::Utf8,
     }
 }
 
-struct Values<'a>(&'a [r2dbc::Value]);
-struct ValuesIter<'a>(std::slice::Iter<'a, r2dbc::Value>);
+struct Values<'a>(&'a [r2dbc_core::Value]);
+struct ValuesIter<'a>(std::slice::Iter<'a, r2dbc_core::Value>);
 
 impl<'a> IntoIterator for &'a Values<'a> {
     type Item = &'a dyn rusqlite::types::ToSql;
@@ -374,9 +374,9 @@ impl<'a> Iterator for ValuesIter<'a> {
 
     fn next(&mut self) -> Option<&'a dyn rusqlite::types::ToSql> {
         self.0.next().map(|v| match v {
-            r2dbc::Value::String(ref s) => s as &dyn rusqlite::types::ToSql,
-            r2dbc::Value::Int32(ref n) => n as &dyn rusqlite::types::ToSql,
-            r2dbc::Value::UInt32(ref n) => n as &dyn rusqlite::types::ToSql,
+            r2dbc_core::Value::String(ref s) => s as &dyn rusqlite::types::ToSql,
+            r2dbc_core::Value::Int32(ref n) => n as &dyn rusqlite::types::ToSql,
+            r2dbc_core::Value::UInt32(ref n) => n as &dyn rusqlite::types::ToSql,
         })
     }
 }
@@ -420,7 +420,7 @@ mod tests {
 
 
     #[test]
-    fn execute_query() -> r2dbc::Result<()> {
+    fn execute_query() -> r2dbc_core::Result<()> {
         // let mut connection = SqliteConnectOptions::new().connect().await?;
         // let stmt = connection.create_statement("SELECT 1").unwrap();
         // let mut rs = stmt.execute();

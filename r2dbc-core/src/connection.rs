@@ -149,6 +149,11 @@ impl ConnectionFactoryOptions {
 
 }
 
+pub trait ConnectionFactoryProvider {
+    type C: ConnectionFactory;
+    fn create(options: ConnectionFactoryOptions) -> Result<Self::C>;
+}
+
 
 /// Metadata about the product a [ConnectionFactory] is applicable to.
 pub trait ConnectionFactoryMetadata {
