@@ -3,7 +3,7 @@ name = "r2dbc"
 description = "Rust Relation Database Connectivity (R2DBC) API"
 version = "0.0.1"
 authors = ["seancarroll"]
-edition = "2018"
+edition = "2021"
 readme = "../README.md"
 keywords = ["sql"]
 categories = ["database"]
@@ -13,6 +13,11 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = { version = "0.4.11", default-features = false, features = [ "clock" ], optional = true }
-futures-core = { version = "0.3.14", default-features = false }
+chrono = { version = "0.4.19", default-features = false, features = [ "clock" ], optional = true }
+futures = { version = "0.3" }
 log = "0.4"
+r2dbc-core = { path = "../r2dbc-core", version = "0.0.1" }
+thiserror = "1.0.29"
+tracing = "0.1"
+tracing-subscriber = "0.2"
+url = "2.2.2"

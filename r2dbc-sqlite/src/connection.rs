@@ -1,4 +1,4 @@
-use r2dbc::ConnectionMetadata;
+use r2dbc_core::connection::ConnectionMetadata;
 
 pub struct SqliteConnectionMetadata {
 

@@ -2,13 +2,15 @@ mod connection;
 mod options;
 
 use std::collections::HashMap;
-use r2dbc::{DatabaseMetadata, TransactionDefinition, IsolationLevel, ConnectionMetadata, ValidationDepth, Batch, Statement, SQLResult, Result, ResultSetMetaData, Error, Connection};
+use std::ops::Deref;
 use rusqlite::{Rows, TransactionBehavior};
 use crate::connection::SqliteConnectionMetadata;
-use r2dbc::R2dbcError::General;
 use rusqlite::Error as RusqliteError;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::rc::Rc;
+use r2dbc::{DatabaseMetadata, ResultSetMetaData};
+use r2dbc_core::connection::{Batch, ConnectionMetadata, IsolationLevel, SQLResult, Statement, ValidationDepth};
+use r2dbc_core::Result;
 
 // https://tedspence.com/investigating-rust-with-sqlite-53d1f9a41112
 // https://www.reddit.com/r/rust/comments/dqa4t3/how_to_put_two_variables_one_borrows_from_other/
@@ -17,8 +19,8 @@ use std::rc::Rc;
 
 
 /// Convert a Sqlite error into an R2DBC error
-fn to_r2dbc_err(e: rusqlite::Error) -> r2dbc::Error {
-    r2dbc::Error::General(format!("{:?}", e))
+fn to_r2dbc_err(e: rusqlite::Error) -> r2dbc_core::error::R2dbcErrors {
+    r2dbc_core::error::R2dbcErrors::General(format!("{:?}", e))
 }
 
 // #[derive(Debug)]
@@ -69,7 +71,7 @@ fn to_r2dbc_err(e: rusqlite::Error) -> r2dbc::Error {
 // path
 // path with flags
 
-pub struct SqliteConnection<'conn> {
+pub struct SqliteConnection {
     // TODO: given Transaction can reference a conn i'm not sure this is feasible
     // conn: Mutex<Option<&'conn rusqlite::Connection>>,
     // this needs to be a reference to Rusqlite::Connection otherwise we get an error like
@@ -77,11 +79,10 @@ pub struct SqliteConnection<'conn> {
     // help: consider borrowing the `Option`'s content: `self.conn.as_ref()`
     //
     // because of E0106 it requires a lifetime
-    conn: Option<Rc<rusqlite::Connection>>,
-    transaction: Option<rusqlite::Transaction<'conn>>,
+    conn: Option<Arc<Mutex<rusqlite::Connection>>>,
 }
 
-impl<'conn> SqliteConnection<'conn> {
+impl SqliteConnection {
 
     pub fn new(conn: rusqlite::Connection) -> Self {
         // Self { conn: Mutex::new(Some(conn)), transaction: None }
@@ -90,8 +91,7 @@ impl<'conn> SqliteConnection<'conn> {
         //     conn: Some(Rc::new(conn))
         // }
         Self {
-            conn: Some(Rc::new(conn)),
-            transaction: None,
+            conn: Some(Arc::new(Mutex::new(conn))),
         }
     }
 
@@ -102,8 +102,8 @@ impl<'conn> SqliteConnection<'conn> {
     }
 }
 
-impl<'conn> r2dbc::Connection<'conn> for SqliteConnection<'conn> {
-    type Statement = SqliteStatement<'conn>;
+impl r2dbc_core::connection::Connection for SqliteConnection {
+    // type Statement = SqliteStatement<'conn>;
 
     // TODO: result?
     fn begin_transaction(&mut self) -> Result<()> {
@@ -115,12 +115,12 @@ impl<'conn> r2dbc::Connection<'conn> for SqliteConnection<'conn> {
         Ok(())
     }
 
-    fn begin_transaction_with_definition(&mut self, definition: &dyn TransactionDefinition) {
-        // TODO: convert definition to TransactionBehavior
-        // let mut connection = self.conn.take().unwrap();
-        // let mut connection = self.conn.lock().unwrap().take().unwrap();
-        // connection.transaction_with_behavior(TransactionBehavior::Deferred);
-    }
+    // fn begin_transaction_with_definition(&mut self, definition: &dyn TransactionDefinition) {
+    //     // TODO: convert definition to TransactionBehavior
+    //     // let mut connection = self.conn.take().unwrap();
+    //     // let mut connection = self.conn.lock().unwrap().take().unwrap();
+    //     // connection.transaction_with_behavior(TransactionBehavior::Deferred);
+    // }
 
     // https://www.reddit.com/r/rust/comments/2t8i2s/yet_another_problem_with_mutable_struct_members/
     // TODO: should return a result
@@ -157,7 +157,8 @@ impl<'conn> r2dbc::Connection<'conn> for SqliteConnection<'conn> {
         // let savepoint = self.transaction.unwrap().savepoint_with_name(name)?;
     }
 
-    fn create_statement(&mut self, sql: &str) -> Result<Box<Self::Statement>> {
+    // fn create_statement(&mut self, sql: &str) -> Result<Box<Self::Statement>> {
+    fn create_statement(&mut self, sql: &str) -> Result<Box<dyn Statement<'_> + '_>> {
         // let mut c = self.conn.take();
         // let stmt = c.unwrap()
         //     .prepare(sql)
@@ -165,7 +166,7 @@ impl<'conn> r2dbc::Connection<'conn> for SqliteConnection<'conn> {
 
         // let c: &'conn rusqlite::Connection = self.conn.unwrap();
 
-        // let stmt: rusqlite::Statement = self.conn.as_ref().unwrap()
+        // let stmt: rusqlite::Statement = self.conn.unwrap()
         //     .prepare(sql)
         //     .map_err(to_r2dbc_err)?;
 
@@ -177,15 +178,27 @@ impl<'conn> r2dbc::Connection<'conn> for SqliteConnection<'conn> {
         //     .prepare(sql)
         //     .map_err(to_r2dbc_err)?;
 
-        Ok(Box::new(SqliteStatement {
-            stmt: None
-        }))
+        // let stmt = self.conn
+        //     .as_ref()
+        //     .unwrap()
+        //     .clone()
+        //     .deref()
+        //     .lock()
+        //     .unwrap()
+        //     .prepare(sql)
+        //     .map_err(to_r2dbc_err)?;
+        //
+        // Ok(Box::new(SqliteStatement {
+        //     stmt,
+        // }))
+
+        todo!()
     }
 
     fn is_auto_commit(&mut self) -> bool {
         let connection = self.conn.take().unwrap();
         // let connection = self.conn.lock().unwrap().take().unwrap();
-        connection.is_autocommit()
+        connection.clone().deref().lock().unwrap().is_autocommit()
     }
 
     fn metadata(&mut self) -> Result<Box<dyn ConnectionMetadata>> {
@@ -234,18 +247,18 @@ impl<'conn> r2dbc::Connection<'conn> for SqliteConnection<'conn> {
     }
 }
 
-impl<'conn> Drop for SqliteConnection<'conn> {
-    fn drop(&mut self) {
-        let _ = self.close();
-    }
-}
+// impl Drop for SqliteConnection {
+//     fn drop(&mut self) {
+//         let _ = self.close();
+//     }
+// }
 
 // TODO: Do we need this? Can we just use CallableStatement/PreparedStatement
 pub struct SqliteStatement<'a> {
-    stmt: Option<rusqlite::Statement<'a>>,
+    stmt: rusqlite::Statement<'a>,
 }
 
-impl<'conn> r2dbc::Statement<'conn> for SqliteStatement<'conn> {
+impl r2dbc_core::connection::Statement<'_> for SqliteStatement<'_> {
     fn add(&mut self) -> &mut Self where Self: Sized {
         todo!()
     }
@@ -408,13 +421,13 @@ mod tests {
 
     #[test]
     fn execute_query() -> r2dbc::Result<()> {
-        let mut connection = SqliteConnectOptions::new().connect().await?;
-        let stmt = connection.create_statement("SELECT 1").unwrap();
-        let mut rs = stmt.execute();
-
-        while rs.next() {
-            println!("{:?}", rs.get_string(1));
-        }
+        // let mut connection = SqliteConnectOptions::new().connect().await?;
+        // let stmt = connection.create_statement("SELECT 1").unwrap();
+        // let mut rs = stmt.execute();
+        //
+        // while rs.next() {
+        //     println!("{:?}", rs.get_string(1));
+        // }
 
         Ok(())
     }

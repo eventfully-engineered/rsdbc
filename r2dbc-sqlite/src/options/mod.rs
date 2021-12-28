@@ -14,15 +14,18 @@ pub use locking_mode::SqliteLockingMode;
 pub use synchronous::SqliteSynchronous;
 
 use std::{borrow::Cow, time::Duration};
+use std::future::Future;
 use std::path::Path;
-use r2dbc::{ConnectionFactory, Error};
+use std::pin::Pin;
 use crate::{SqliteConnection, to_r2dbc_err};
 use crate::Result;
 use futures_core::future::BoxFuture;
 use rusqlite::{Connection, OpenFlags};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use rusqlite::params;
 use std::rc::Rc;
+use r2dbc_core::connection::{ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions};
+use r2dbc_core::error::R2dbcErrors;
 
 // // TODO:
 // // - ^ the trait `From<rusqlite::Error>` is not implemented for `r2dbc::Error`
@@ -33,6 +36,7 @@ use std::rc::Rc;
 // }
 
 
+// TODO: rename to SqliteConnectionConfiguration?
 #[derive(Clone, Debug)]
 pub struct SqliteConnectOptions {
     pub(crate) filename: Cow<'static, Path>,
@@ -173,77 +177,81 @@ impl SqliteConnectOptions {
     }
 }
 
-impl<'conn> ConnectionFactory<'conn> for SqliteConnectOptions {
-    type Connection = SqliteConnection<'conn>;
-
-    fn connect(&self) -> BoxFuture<'_, Result<Self::Connection>>
-        where
-            Self::Connection: Sized,
+impl ConnectionFactory for SqliteConnectOptions {
+    // fn connect(&self) -> BoxFuture<'_, Result<Box<SqliteConnection>>>
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<(dyn r2dbc_core::connection::Connection + 'static)>>> + Send>>
     {
-        Box::pin(async move {
-            let mut flags = OpenFlags::SQLITE_OPEN_NO_MUTEX;
+        todo!()
+        // Box::pin(async move {
+        //     let mut flags = OpenFlags::SQLITE_OPEN_NO_MUTEX;
+        //
+        //     flags |= if self.read_only {
+        //         OpenFlags::SQLITE_OPEN_READ_ONLY
+        //     } else if self.create_if_missing {
+        //         OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE
+        //     } else {
+        //         OpenFlags::SQLITE_OPEN_READ_WRITE
+        //     };
+        //
+        //     if self.in_memory {
+        //         flags |= OpenFlags::SQLITE_OPEN_MEMORY;
+        //     }
+        //
+        //     flags |= if self.shared_cache {
+        //         OpenFlags::SQLITE_OPEN_SHARED_CACHE
+        //     } else {
+        //         OpenFlags::SQLITE_OPEN_PRIVATE_CACHE
+        //     };
+        //
+        //     let conn =
+        //         rusqlite::Connection::open_with_flags(self.filename.to_path_buf(), flags)
+        //             .map_err(to_r2dbc_err)?;
+        //
+        //     conn.busy_timeout(self.busy_timeout);
+        //
+        //     // execute pragma
+        //     let init = format!(
+        //         "PRAGMA locking_mode = {}; PRAGMA journal_mode = {}; PRAGMA foreign_keys = {}; PRAGMA synchronous = {}; PRAGMA auto_vacuum = {}",
+        //         self.locking_mode.as_str(),
+        //         self.journal_mode.as_str(),
+        //         if self.foreign_keys { "ON" } else { "OFF" },
+        //         self.synchronous.as_str(),
+        //         self.auto_vacuum.as_str(),
+        //     );
+        //     conn.execute(init.as_str(), params![]).map_err(to_r2dbc_err)?;
+        //
+        //     // // TODO: make this better
+        //     // Ok(Box::new(SqliteConnection {
+        //     //     // conn: Mutex::new(Some(&conn)),
+        //     //     conn: Some(Arc::new(Mutex::new(conn))),
+        //     // }) as Box<(dyn r2dbc_core::connection::Connection + 'static)>)
+        //
+        //     todo!()
+        //
+        //
+        //     // let mut conn = establish(self).await?;
+        //     //
+        //     // // send an initial sql statement comprised of options
+        //     // //
+        //     // // Note that locking_mode should be set before journal_mode; see
+        //     // // https://www.sqlite.org/wal.html#use_of_wal_without_shared_memory .
+        //     // let init = format!(
+        //     //     "PRAGMA locking_mode = {}; PRAGMA journal_mode = {}; PRAGMA foreign_keys = {}; PRAGMA synchronous = {}; PRAGMA auto_vacuum = {}",
+        //     //     self.locking_mode.as_str(),
+        //     //     self.journal_mode.as_str(),
+        //     //     if self.foreign_keys { "ON" } else { "OFF" },
+        //     //     self.synchronous.as_str(),
+        //     //     self.auto_vacuum.as_str(),
+        //     // );
+        //     //
+        //     // conn.execute(&*init).await?;
+        //     //
+        //     // Ok(conn)
+        // })
+    }
 
-            flags |= if self.read_only {
-                OpenFlags::SQLITE_OPEN_READ_ONLY
-            } else if self.create_if_missing {
-                OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE
-            } else {
-                OpenFlags::SQLITE_OPEN_READ_WRITE
-            };
-
-            if self.in_memory {
-                flags |= OpenFlags::SQLITE_OPEN_MEMORY;
-            }
-
-            flags |= if self.shared_cache {
-                OpenFlags::SQLITE_OPEN_SHARED_CACHE
-            } else {
-                OpenFlags::SQLITE_OPEN_PRIVATE_CACHE
-            };
-
-            let conn =
-                rusqlite::Connection::open_with_flags(self.filename.to_path_buf(), flags)
-                    .map_err(to_r2dbc_err)?;
-
-            conn.busy_timeout(self.busy_timeout);
-
-            // execute pragma
-            let init = format!(
-                "PRAGMA locking_mode = {}; PRAGMA journal_mode = {}; PRAGMA foreign_keys = {}; PRAGMA synchronous = {}; PRAGMA auto_vacuum = {}",
-                self.locking_mode.as_str(),
-                self.journal_mode.as_str(),
-                if self.foreign_keys { "ON" } else { "OFF" },
-                self.synchronous.as_str(),
-                self.auto_vacuum.as_str(),
-            );
-            conn.execute(init.as_str(), params![]).map_err(to_r2dbc_err)?;
-
-            // TODO: make this better
-            Ok(SqliteConnection {
-                // conn: Mutex::new(Some(&conn)),
-                conn: Some(Rc::new(conn)),
-                transaction: None
-            })
-
-
-            // let mut conn = establish(self).await?;
-            //
-            // // send an initial sql statement comprised of options
-            // //
-            // // Note that locking_mode should be set before journal_mode; see
-            // // https://www.sqlite.org/wal.html#use_of_wal_without_shared_memory .
-            // let init = format!(
-            //     "PRAGMA locking_mode = {}; PRAGMA journal_mode = {}; PRAGMA foreign_keys = {}; PRAGMA synchronous = {}; PRAGMA auto_vacuum = {}",
-            //     self.locking_mode.as_str(),
-            //     self.journal_mode.as_str(),
-            //     if self.foreign_keys { "ON" } else { "OFF" },
-            //     self.synchronous.as_str(),
-            //     self.auto_vacuum.as_str(),
-            // );
-            //
-            // conn.execute(&*init).await?;
-            //
-            // Ok(conn)
-        })
+    // TODO: use SQLite Connection Factory Metadata?
+    fn get_metadata(&self) -> Box<dyn ConnectionFactoryMetadata> {
+        todo!()
     }
 }

@@ -2,10 +2,11 @@
 
 members = [
     "r2dbc",
+    "r2dbc-core",
+    "r2dbc-cli",
     "r2dbc-mysql",
     "r2dbc-postgres",
     "r2dbc-sqlite",
-    "r2dbc-cli",
 ]
 
 
