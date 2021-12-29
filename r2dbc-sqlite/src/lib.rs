@@ -242,7 +242,7 @@ impl r2dbc_core::connection::Connection for SqliteConnection {
         // ))
     }
 
-    fn validate(&mut self, depth: ValidationDepth) {
+    fn validate(&mut self, depth: ValidationDepth) -> bool {
         todo!()
     }
 }

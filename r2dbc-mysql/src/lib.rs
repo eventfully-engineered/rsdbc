@@ -90,7 +90,7 @@ impl Connection for MySqlConnection {
         todo!()
     }
 
-    fn validate(&mut self, depth: ValidationDepth) {
+    fn validate(&mut self, depth: ValidationDepth) -> bool {
         todo!()
     }
 }

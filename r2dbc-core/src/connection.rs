@@ -4,6 +4,7 @@ use url::Url;
 use crate::{R2dbcErrors, Result};
 
 pub trait ConnectionFactory: 'static + Send + Sync {
+    // TODO: should have associated type for Error so that we have multiple error types?
     // TODO: remove associated type?
     // type Connection: Connection + ?Sized;
 
@@ -22,6 +23,7 @@ pub trait ConnectionFactory: 'static + Send + Sync {
     //     where
     //         Self::Connection: Sized;
 
+    // TODO: create instead of connect?
     /// Establish a new database connection with the options specified by ConnectionOptions.
     fn connect(&self) -> BoxFuture<'_, Result<Box<dyn Connection>>>;
 
@@ -289,7 +291,7 @@ pub trait Connection: Send {
     /// Arguments:
     ///
     /// * `depth`: the validation depth
-    fn validate(&mut self, depth: ValidationDepth);
+    fn validate(&mut self, depth: ValidationDepth) -> bool;
 
 
 
@@ -525,6 +527,7 @@ pub trait Statement<'conn> {
 }
 
 
+// TODO: each db probably has a different set so this probably doesnt make sense as an enum here
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum SslMode {

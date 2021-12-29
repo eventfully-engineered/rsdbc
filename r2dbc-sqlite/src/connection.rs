@@ -62,7 +62,7 @@ impl Connection for SqliteConnection {
         todo!()
     }
 
-    fn validate(&mut self, depth: ValidationDepth) {
+    fn validate(&mut self, depth: ValidationDepth) -> bool {
         todo!()
     }
 }

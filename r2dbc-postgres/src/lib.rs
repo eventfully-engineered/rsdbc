@@ -1,15 +1,24 @@
+mod ssl_mode;
+
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 use futures::future::BoxFuture;
+use postgres::{Client, NoTls};
 use postgres::config::SslMode;
+
+use native_tls::{Certificate, TlsConnector};
+use postgres_native_tls::MakeTlsConnector;
+use std::fs;
+
 use tracing_subscriber::fmt::time;
 use url::Url;
 use r2dbc_core::connection::{Batch, Connection, ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions, ConnectionFactoryProvider, ConnectionMetadata, IsolationLevel, Statement, ValidationDepth};
 use r2dbc_core::error::R2dbcErrors;
 use r2dbc_core::Result;
 
+// TODO: should this take raw string?
 pub struct  PostgresqlConnectionConfiguration {
     // application_name = "r2dbc-postgresql"
     pub application_name: String,
@@ -29,7 +38,7 @@ pub struct  PostgresqlConnectionConfiguration {
     pub ssl_cert: Option<Url>,
     // pub hostname_verifier: HostnameVerifier,
     pub ssl_key: Option<Url>,
-    pub ssl_mode: SslMode, // TODO: expose own so that we can change internals if we need to
+    pub ssl_mode: ssl_mode::SslMode, // TODO: expose own so that we can change internals if we need to
     pub ssl_password: String,
     pub ssl_root_cert: Option<Url>,
     pub statement_timeout: Duration,
@@ -38,6 +47,8 @@ pub struct  PostgresqlConnectionConfiguration {
     pub username: String,
 }
 
+// example of builder see
+// https://github.com/sfackler/rust-native-tls/blob/41522daa6f6e76182c3118a7f9c23f6949e6d59f/src/lib.rs
 impl PostgresqlConnectionConfiguration {
 
     fn new() -> Self {
@@ -58,7 +69,7 @@ impl PostgresqlConnectionConfiguration {
             socket: "".to_string(),
             ssl_cert: None,
             ssl_key: None,
-            ssl_mode: SslMode::Disable,
+            ssl_mode: ssl_mode::SslMode::Disable,
             ssl_password: "".to_string(),
             ssl_root_cert: None,
             statement_timeout: Default::default(),
@@ -102,7 +113,7 @@ impl PostgresqlConnectionConfiguration {
 
     // TODO: check what ssl modes postgres takes.
     pub fn enable_ssl(&mut self) -> &mut Self {
-        self.ssl_mode = SslMode::Require; // VERIFY_FULL
+        self.ssl_mode = ssl_mode::SslMode::Require; // VERIFY_FULL
         self
     }
 
@@ -135,12 +146,6 @@ impl PostgresqlConnectionConfiguration {
         self
     }
 
-    // TODO: WTF is this?
-    // pub fn loop_resources(&mut self, loop_resources: LoopResources) -> &mut Self {
-    //     self.loop_resources = loop_resources;
-    //     self
-    // }
-
     // TODO: probably don't need this
     // pub fn notice_log_level(&mut self, log_level: LogLevel) -> &mut Self {
     //     self.notice_log_level = log_level;
@@ -169,11 +174,6 @@ impl PostgresqlConnectionConfiguration {
         self
     }
 
-    // pub fn prefer_attached_buffers(&mut self, prefer_attached_buffers: bool) -> &mut Self {
-    //     self.prefer_attached_buffers = prefer_attached_buffers;
-    //     self
-    // }
-
     /// Configure the preparedStatementCacheQueries. The default is {@code -1}, meaning there's no limit.
     /// The value of {@code 0} disables the cache. Any other value specifies the cache size.
     pub fn prepared_statement_cache_queries(&mut self, prepared_statement_cache_queries: i32) -> &mut Self {
@@ -188,181 +188,110 @@ impl PostgresqlConnectionConfiguration {
 
     pub fn socket(&mut self, socket: String) -> &mut Self {
         self.socket = socket;
-        self.ssl_mode = SslMode::Disable;
+        self.ssl_mode = ssl_mode::SslMode::Disable;
         self
     }
 
-
-    // /**
-    //  * Configure a {@link SslContextBuilder} customizer. The customizer gets applied on each SSL connection attempt to allow for just-in-time configuration updates. The {@link Function} gets
-    //  * called with the prepared {@link SslContextBuilder} that has all configuration options applied. The customizer may return the same builder or return a new builder instance to be used to
-    //  * build the SSL context.
-    //  *
-    //  * @param sslContextBuilderCustomizer customizer function
-    //  * @return this {@link Builder}
-    //  * @throws IllegalArgumentException if {@code sslContextBuilderCustomizer} is {@code null}
-    //  */
-    // public Builder sslContextBuilderCustomizer(Function<SslContextBuilder, SslContextBuilder> sslContextBuilderCustomizer) {
-    // this.sslContextBuilderCustomizer = Assert.requireNonNull(sslContextBuilderCustomizer, "sslContextBuilderCustomizer must not be null");
-    // return this;
-    // }
-    //
-    // /**
-    //  * Configure ssl cert for client certificate authentication. Can point to either a resource within the classpath or a file.
-    //  *
-    //  * @param sslCert an X.509 certificate chain file in PEM format
-    //  * @return this {@link Builder}
-    //  */
-    // public Builder sslCert(String sslCert) {
-    // return sslCert(requireExistingFilePath(sslCert, "sslCert must not be null and must exist"));
-    // }
-    //
-    // /**
-    //  * Configure ssl cert for client certificate authentication.
-    //  *
-    //  * @param sslCert an X.509 certificate chain file in PEM format
-    //  * @return this {@link Builder}
-    //  * @since 0.8.7
-    //  */
-    // public Builder sslCert(URL sslCert) {
-    // this.sslCert = Assert.requireNonNull(sslCert, "sslCert must not be null");
-    // return this;
-    // }
-    //
-    // /**
-    //  * Configure ssl HostnameVerifier.
-    //  *
-    //  * @param sslHostnameVerifier {@link HostnameVerifier}
-    //  * @return this {@link Builder}
-    //  */
-    // public Builder sslHostnameVerifier(HostnameVerifier sslHostnameVerifier) {
-    // this.sslHostnameVerifier = Assert.requireNonNull(sslHostnameVerifier, "sslHostnameVerifier must not be null");
-    // return this;
-    // }
-    //
-    // /**
-    //  * Configure ssl key for client certificate authentication.  Can point to either a resource within the classpath or a file.
-    //  *
-    //  * @param sslKey a PKCS#8 private key file in PEM format
-    //  * @return this {@link Builder}
-    //  */
-    // public Builder sslKey(String sslKey) {
-    // return sslKey(requireExistingFilePath(sslKey, "sslKey must not be null and must exist"));
-    // }
-    //
-    // /**
-    //  * Configure ssl key for client certificate authentication.
-    //  *
-    //  * @param sslKey a PKCS#8 private key file in PEM format
-    //  * @return this {@link Builder}
-    //  * @since 0.8.7
-    //  */
-    // public Builder sslKey(URL sslKey) {
-    // this.sslKey = Assert.requireNonNull(sslKey, "sslKey must not be null");
-    // return this;
-    // }
-    //
-    // /**
-    //  * Configure ssl mode.
-    //  *
-    //  * @param sslMode the SSL mode to use.
-    //  * @return this {@link Builder}
-    //  */
-    // public Builder sslMode(SSLMode sslMode) {
-    // this.sslMode = Assert.requireNonNull(sslMode, "sslMode must be not be null");
-    // return this;
-    // }
-    //
-    // /**
-    //  * Configure ssl password.
-    //  *
-    //  * @param sslPassword the password of the sslKey, or null if it's not password-protected
-    //  * @return this {@link Builder}
-    //  */
-    // public Builder sslPassword(@Nullable CharSequence sslPassword) {
-    // this.sslPassword = sslPassword;
-    // return this;
-    // }
-    //
-    // /**
-    //  * Configure ssl root cert for server certificate validation. Can point to either a resource within the classpath or a file.
-    //  *
-    //  * @param sslRootCert an X.509 certificate chain file in PEM format
-    //  * @return this {@link Builder}
-    //  */
-    // public Builder sslRootCert(String sslRootCert) {
-    // return sslRootCert(requireExistingFilePath(sslRootCert, "sslRootCert must not be null and must exist"));
-    // }
-    //
-    // /**
-    //  * Configure ssl root cert for server certificate validation.
-    //  *
-    //  * @param sslRootCert an X.509 certificate chain file in PEM format
-    //  * @return this {@link Builder}
-    //  * @since 0.8.7
-    //  */
-    // public Builder sslRootCert(URL sslRootCert) {
-    // this.sslRootCert = Assert.requireNonNull(sslRootCert, "sslRootCert must not be null and must exist");
-    // return this;
-    // }
-    //
-    // /**
-    //  * Configure TCP KeepAlive.
-    //  *
-    //  * @param enabled whether to enable TCP KeepAlive
-    //  * @return this {@link Builder}
-    //  * @see Socket#setKeepAlive(boolean)
-    //  * @since 0.8.4
-    //  */
-    // public Builder tcpKeepAlive(boolean enabled) {
-    // this.tcpKeepAlive = enabled;
-    // return this;
-    // }
-    //
-    // /**
-    //  * Configure TCP NoDelay.
-    //  *
-    //  * @param enabled whether to enable TCP NoDelay
-    //  * @return this {@link Builder}
-    //  * @see Socket#setTcpNoDelay(boolean)
-    //  * @since 0.8.4
-    //  */
-    // public Builder tcpNoDelay(boolean enabled) {
-    // this.tcpNoDelay = enabled;
-    // return this;
-    // }
-    //
-    // /**
-    //  * Configure the username.
-    //  *
-    //  * @param username the username
-    //  * @return this {@link Builder}
-    //  * @throws IllegalArgumentException if {@code username} is {@code null}
-    //  */
-    // public Builder username(String username) {
-    // this.username = Assert.requireNonNull(username, "username must not be null");
-    // return this;
+    // TODO: how to handle this failing?
+    // Might have to actually use a builder and return Result on call to `build`
+    // /// Configure ssl cert for client certificate authentication.
+    // /// Can point to either a resource or a file.
+    // /// sslCert an X.509 certificate chain file in PEM format
+    // pub fn ssl(&mut self, ssl_cert_path: String) -> &mut Self {
+    //     self.ssl_url(Url::parse(ssl_cert_path.as_str()))
     // }
 
+    /// Configure ssl cert for client certificate authentication.
+    ///
+    /// sslCert an X.509 certificate chain file in PEM format
+    pub fn ssl_url(&mut self, ssl_cert: Url) -> &mut Self {
+        self.ssl_key = Some(ssl_cert);
+        self
+    }
 
+    // TODO: how to do ssl hostname verifier/verification
+
+
+    // Configure ssl key for client certificate authentication.
+    // Can point to either a resource or a file.
+    // pub fn sslkey(&mut self, sslkey: String) -> &mut Self {
+    //     self.ssl_key(Url::parse(sslkey.as_str()))
+    // }
+
+    /// Configure ssl key for client certificate authentication.
+    ///
+    /// sslKey a PKCS#8 private key file in PEM format
+    pub fn sslkey_url(&mut self, sslkey: Url) -> &mut Self {
+        self.ssl_key = Some(sslkey);
+        self
+    }
+
+    pub fn ssl_mode(&mut self, ssl_mode: ssl_mode::SslMode) -> &mut Self {
+        self.ssl_mode = ssl_mode;
+        self
+    }
+
+    pub fn ssl_password(&mut self, ssl_password: String) -> &mut Self {
+        self.ssl_password = ssl_password;
+        self
+    }
+
+    // Configure ssl root cert for server certificate validation.
+    // Can point to either a resource or a file.
+    // pub fn ssl_root_cert(&mut self, ssl_root_cert: String) -> &mut Self {
+    //     self.ssl_root_cert_url(Url::parse(ssl_root_cert.as_str()))
+    // }
+
+    /// Configure ssl root cert for server certificate validation.
+    ///
+    /// sslRootCert an X.509 certificate chain file in PEM format
+    pub fn ssl_root_cert_url(&mut self, ssl_root_cert: Url) -> &mut Self {
+        self.ssl_root_cert = Some(ssl_root_cert);
+        self
+    }
+
+    pub fn tcp_keep_alive(&mut self, enabled: bool) -> &mut Self {
+        self.tcp_keep_alive = enabled;
+        self
+    }
+
+    pub fn tcp_no_delay(&mut self, enabled: bool) -> &mut Self {
+        self.tcp_no_delay = enabled;
+        self
+    }
+
+    pub fn username(&mut self, username: String) -> &mut Self {
+        self.username = username;
+        self
+    }
 }
 
 pub struct PostgresqlConnectionFactory {
     pub configuration: PostgresqlConnectionConfiguration
 }
 
-pub struct PostgresqlConnection;
+pub struct PostgresqlConnection {
+    // TODO: does this need to hold ref to configuration?
+    client: postgres::Client,
+}
 
 impl Connection for PostgresqlConnection {
+
+    // TODO: provide options to build transaction
+    // beginTransaction(TransactionDefinition definition)
     fn begin_transaction(&mut self) -> Result<()> {
+        // self.client.transaction()
+        // self.client.build_transaction()
         todo!()
     }
 
     fn close(&mut self) -> Result<()> {
+        // self.client.close()
         todo!()
     }
 
     fn commit_transaction(&mut self) {
+        // self.client.
         todo!()
     }
 
@@ -378,11 +307,13 @@ impl Connection for PostgresqlConnection {
         todo!()
     }
 
+    // TODO: not seeing how to do this...needs more research
     fn is_auto_commit(&mut self) -> bool {
         todo!()
     }
 
     fn metadata(&mut self) -> Result<Box<dyn ConnectionMetadata>> {
+        // self.client.
         todo!()
     }
 
@@ -410,13 +341,34 @@ impl Connection for PostgresqlConnection {
         todo!()
     }
 
-    fn validate(&mut self, depth: ValidationDepth) {
-        todo!()
+    fn validate(&mut self, depth: ValidationDepth) -> bool {
+        if self.client.is_closed() {
+            return false;
+        }
+
+        // TODO: where to get duration from?
+        self.client.is_valid(Duration::from_secs(60)).is_ok()
     }
 }
 
 impl ConnectionFactory for PostgresqlConnectionFactory {
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<(dyn Connection + 'static)>>> + Send>> {
+
+        // let tls = if self.configuration.ssl_mode == ssl_mode::SslMode::Disable {
+        //     NoTls
+        // } else {
+        //     // let cert = fs::read("database_cert.pem")?;
+        //     // let cert = Certificate::from_pem(&cert)?;
+        //     // let connector = TlsConnector::builder()
+        //     //     .add_root_certificate(cert)
+        //     //     .build()?;
+        //     // let connector = MakeTlsConnector::new(connector);
+        // };
+
+        // let mut client = Client::connect("host=localhost user=postgres", NoTls)?;
+
+        // Client::configure().connect()
+
         todo!()
     }
     // fn connect(&self) -> BoxFuture<'_, Result<Box<PostgresqlConnection>>> {
@@ -440,6 +392,11 @@ impl ConnectionFactoryProvider for PostgresqlConnectionFactory {
         })
     }
 }
+
+fn to_r2dbc_err(e: postgres::error::Error) -> r2dbc_core::error::R2dbcErrors {
+    r2dbc_core::error::R2dbcErrors::General(format!("{:?}", e))
+}
+
 
 #[cfg(test)]
 mod tests {
