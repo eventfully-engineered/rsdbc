@@ -1,6 +1,7 @@
 use futures::future::BoxFuture;
 use r2dbc_core::connection::{Batch, Connection, ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions, ConnectionFactoryProvider, ConnectionMetadata, IsolationLevel, Statement, ValidationDepth};
 use r2dbc_core::error::R2dbcErrors;
+use r2dbc_core::OptionValue;
 use crate::error::SqliteR2dbcError;
 use crate::options::SqliteConnectOptions;
 
@@ -110,10 +111,19 @@ impl ConnectionFactoryProvider for SqliteConnectionFactory {
         // TODO: just testing how this would work
         let protocol = connection_factory_options.options.get("protocol");
         if let Some(protocol) = protocol {
-            if protocol == "memory" {
+            let protocol_value = match protocol {
+                OptionValue::String(s) => {
+                    s.to_string()
+                }
+                _ => {
+                    // TODO: return error here
+                    "".to_string()
+                }
+            };
+            if protocol_value == "memory" {
 
             } else {
-                sqlite_options = sqlite_options.filename(protocol);
+                sqlite_options = sqlite_options.filename(protocol_value);
             }
         } else {
             return Err(R2dbcErrors::from(SqliteR2dbcError::InvalidProtocol("".to_string())));

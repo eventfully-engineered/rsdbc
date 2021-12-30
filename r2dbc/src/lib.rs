@@ -7,7 +7,7 @@ use std::time::Duration;
 use futures::future::BoxFuture;
 use url::Url;
 use r2dbc_core::error::R2dbcErrors;
-use r2dbc_core::Result;
+use r2dbc_core::{OptionValue, Result};
 use r2dbc_core::connection::{Connection, ConnectionFactory, ConnectionFactoryOptions, ConnectionFactoryProvider};
 use r2dbc_sqlite::connection::SqliteConnectionFactory;
 use r2dbc_postgres::PostgresqlConnectionFactory;
@@ -40,7 +40,18 @@ impl ConnectionFactories {
             return Err(Box::new(R2dbcErrors::UnknownDatabase));
         }
 
-        let db = DB::from_str(driver.unwrap());
+        // TODO: simplify
+        let driver_value = match driver.unwrap() {
+            OptionValue::String(s) => {
+                s
+            }
+            _ => {
+                // TODO: return errror
+                ""
+            }
+        };
+
+        let db = DB::from_str(driver_value);
         if db.is_err() {
             return Err(Box::new(db.err().unwrap()));
         }

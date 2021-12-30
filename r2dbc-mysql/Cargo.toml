@@ -16,6 +16,7 @@ license = "MIT"
 futures = { version = "0.3" }
 mysql = "21.0.2"
 mysql_common = "0.28.0"
+#mysql_async = "0.29.0"
 r2dbc-core = { path = "../r2dbc-core", version = "0.0.1" }
 sqlparser = "0.12.0"
 twox-hash = "1.6.1"

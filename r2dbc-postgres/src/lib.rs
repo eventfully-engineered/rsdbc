@@ -5,9 +5,10 @@ use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 use futures::future::BoxFuture;
-use postgres::{Client, NoTls};
-use postgres::config::SslMode;
-
+// use postgres::{Client, NoTls};
+// use postgres::config::SslMode;
+use tokio_postgres::{Client, NoTls};
+use tokio_postgres::config::SslMode;
 use native_tls::{Certificate, TlsConnector};
 use postgres_native_tls::MakeTlsConnector;
 use std::fs;
@@ -16,7 +17,7 @@ use tracing_subscriber::fmt::time;
 use url::Url;
 use r2dbc_core::connection::{Batch, Connection, ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions, ConnectionFactoryProvider, ConnectionMetadata, IsolationLevel, Statement, ValidationDepth};
 use r2dbc_core::error::R2dbcErrors;
-use r2dbc_core::Result;
+use r2dbc_core::{OptionValue, Result, TransactionDefinition};
 
 // TODO: should this take raw string?
 pub struct  PostgresqlConnectionConfiguration {
@@ -63,7 +64,7 @@ impl PostgresqlConnectionConfiguration {
             host: "".to_string(),
             options: Default::default(),
             password: "".to_string(),
-            port: 0,
+            port: 5432,
             prepared_statement_cache_queries: 0,
             schema: "".to_string(),
             socket: "".to_string(),
@@ -272,7 +273,8 @@ pub struct PostgresqlConnectionFactory {
 
 pub struct PostgresqlConnection {
     // TODO: does this need to hold ref to configuration?
-    client: postgres::Client,
+    client: Client,
+    // conn: tokio_postgres::Connection<S, T>,
 }
 
 impl Connection for PostgresqlConnection {
@@ -347,7 +349,24 @@ impl Connection for PostgresqlConnection {
         }
 
         // TODO: where to get duration from?
-        self.client.is_valid(Duration::from_secs(60)).is_ok()
+        // self.client.is_valid(Duration::from_secs(60)).is_ok()
+
+        // "" vs "SELECT 1"
+
+        let query = self.client.simple_query("SELECT 1");
+        // tokio::time::timeout(Duration::from_secs(60), query)
+
+        // let inner_client = &self.client;
+        // self.connection.block_on(async {
+        //     let trivial_query = inner_client.simple_query("");
+        //     tokio::time::timeout(timeout, trivial_query)
+        //         .await
+        //         .map_err(|_| Error::__private_api_timeout())?
+        //         .map(|_| ())
+        // })
+
+
+        return true;
     }
 }
 
@@ -366,6 +385,17 @@ impl ConnectionFactory for PostgresqlConnectionFactory {
         // };
 
         // let mut client = Client::connect("host=localhost user=postgres", NoTls)?;
+
+        // let (client, connection) =
+        //     tokio_postgres::connect("host=localhost user=postgres", NoTls).await.unwrap();
+
+        // The connection object performs the actual communication with the database,
+        // so spawn it off to run on its own.
+        // tokio::spawn(async move {
+        //     if let Err(e) = connection.await {
+        //         eprintln!("connection error: {}", e);
+        //     }
+        // });
 
         // Client::configure().connect()
 
@@ -396,6 +426,87 @@ impl ConnectionFactoryProvider for PostgresqlConnectionFactory {
 fn to_r2dbc_err(e: postgres::error::Error) -> r2dbc_core::error::R2dbcErrors {
     r2dbc_core::error::R2dbcErrors::General(format!("{:?}", e))
 }
+
+
+// pub trait PostgresTransactionDefinition: TransactionDefinition {
+//
+//     fn deferrable(&mut self) -> &mut Self;
+//
+//     fn non_deferrable(&mut self) -> &mut Self;
+//
+//     fn isolation_level(&mut self, isolation_level: IsolationLevel) -> &mut Self {
+//         todo!()
+//     }
+//
+//     fn read_only(&mut self) -> &mut Self {
+//         todo!()
+//     }
+//
+//     fn read_write(&mut self) -> &mut Self {
+//         todo!()
+//     }
+// }
+
+pub struct PostgresTransactionDefinition {
+    pub options: HashMap<String, OptionValue>,
+}
+
+impl PostgresTransactionDefinition {
+
+    fn deferrable(&mut self) -> &mut Self {
+        self.options.insert("deferrable".to_string(), OptionValue::Bool(true));
+        self
+    }
+
+    fn non_deferrable(&mut self) -> &mut Self {
+        self.options.insert("deferrable".to_string(), OptionValue::Bool(false));
+        self
+    }
+
+    fn isolation_level(&mut self, isolation_level: IsolationLevel) -> &mut Self {
+        self.options.insert("isolationLevel".to_string(), OptionValue::String(isolation_level.as_sql().to_string()));
+        self
+    }
+
+    fn read_only(&mut self) -> &mut Self {
+        self.options.insert("readOnly".to_string(), OptionValue::Bool(true));
+        self
+    }
+
+    fn read_write(&mut self) -> &mut Self {
+        self.options.insert("readOnly".to_string(), OptionValue::Bool(false));
+        self
+    }
+
+}
+
+impl TransactionDefinition for PostgresTransactionDefinition {
+    fn get_attribute(&self, attribute: &str) -> OptionValue {
+        todo!()
+    }
+}
+
+// pub struct SimpleTransactionDefinition {
+//     // fn get_attribute<V>(&self, attribute: &str) -> Option<V>;
+//     pub options: HashMap<String, String>,
+// }
+//
+// impl TransactionDefinition for SimpleTransactionDefinition {
+//     fn get_attribute<V>(&self, attribute: &str) -> Option<V> {
+//         todo!()
+//     }
+// }
+//
+// impl PostgresTransactionDefinition for SimpleTransactionDefinition {
+//     fn deferrable(&mut self) -> &mut Self {
+//         todo!()
+//     }
+//
+//     fn non_deferrable(&mut self) -> &mut Self {
+//         todo!()
+//     }
+//
+// }
 
 
 #[cfg(test)]

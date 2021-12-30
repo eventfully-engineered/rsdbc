@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::Duration;
 use crate::error::R2dbcErrors;
 
@@ -39,7 +40,7 @@ pub trait TransactionDefinition {
     /// This low-level interface allows querying transaction attributes supported by the {@link Connection} that should be applied
     ///
     /// returns the value of the transaction attribute. Can be None to indicate absence of the attribute
-    fn get_attribute<V>(&self, attribute: &str) -> Option<V>;
+    fn get_attribute(&self, attribute: &str) -> OptionValue;
 }
 
 // TODO: where to put constants?
@@ -60,14 +61,17 @@ impl TransactionOptions {
 
 
 
-
+// TODO: Rename to ConfigurationValue??
+// TODO: improve experience with &str
+// TODO: add convenience methods to get values of a certain type back. Should be Result<blah>. TryInto?
+#[derive(Debug, Clone)]
 pub enum OptionValue {
-    INT(i32),
-    BOOL(bool),
-    STRING(String),
-    DURATION(Duration), // Chrono Duration? Should that be a feature?
+    Int(i32),
+    Bool(bool),
+    String(String),
+    Duration(Duration), // Chrono Duration? Should that be a feature?
+    Map(HashMap<String, String>),
 }
-
 
 
 fn parse_connection(url: &str) {
