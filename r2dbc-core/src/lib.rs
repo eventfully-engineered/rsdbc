@@ -1,5 +1,7 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::time::Duration;
+use url::Url;
 use crate::error::R2dbcErrors;
 
 pub mod error;
@@ -65,6 +67,7 @@ impl TransactionOptions {
 // TODO: improve experience with &str
 // TODO: add convenience methods to get values of a certain type back. Should be Result<blah>. TryInto?
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum OptionValue {
     Int(i32),
     Bool(bool),
@@ -73,6 +76,61 @@ pub enum OptionValue {
     Map(HashMap<String, String>),
 }
 
+// TODO: this might be a good time to use a macro
+// TODO: implement others
+impl From<i32> for OptionValue {
+    fn from(value: i32) -> Self {
+        OptionValue::Int(value)
+    }
+}
+
+impl From<u16> for OptionValue {
+    fn from(value: u16) -> Self {
+        OptionValue::Int(value as i32)
+    }
+}
+
+impl From<bool> for OptionValue {
+    fn from(value: bool) -> Self {
+        OptionValue::Bool(value)
+    }
+}
+
+impl From<Cow<'_, str>> for OptionValue {
+    fn from(value: Cow<'_, str>) -> Self {
+        OptionValue::String(value.to_string())
+    }
+}
+
+impl From<String> for OptionValue {
+    fn from(value: String) -> Self {
+        OptionValue::String(value)
+    }
+}
+
+impl From<&str> for OptionValue {
+    fn from(value: &str) -> Self {
+        OptionValue::String(value.to_string())
+    }
+}
+
+impl From<Duration> for OptionValue {
+    fn from(value: Duration) -> Self {
+        OptionValue::Duration(value)
+    }
+}
+
+impl From<Url> for OptionValue {
+    fn from(value: Url) -> Self {
+        OptionValue::String(value.to_string())
+    }
+}
+
+impl From<HashMap<String, String>> for OptionValue {
+    fn from(value: HashMap<String, String>) -> Self {
+        OptionValue::Map(value)
+    }
+}
 
 fn parse_connection(url: &str) {
     // TODO: parse url to Connection options

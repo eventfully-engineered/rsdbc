@@ -46,7 +46,7 @@ impl ConnectionFactories {
                 s
             }
             _ => {
-                // TODO: return errror
+                // TODO: return error
                 ""
             }
         };

@@ -108,40 +108,40 @@ impl ConnectionFactoryOptions {
         let mut connection_factory_builder = ConnectionFactoryOptions::new();
         // TODO: ssl?
 
-        connection_factory_builder.option("driver", OptionValue::String(driver.to_string()));
+        connection_factory_builder.option("driver", driver.into());
 
         let protocol_end = protocol.find("://");
         if let Some(protocol_end) = protocol_end {
             let protocol_bits = &protocol[..protocol_end];
             if !protocol_bits.trim().is_empty() {
-                connection_factory_builder.option("protocol", OptionValue::String(protocol_bits.to_string()));
+                connection_factory_builder.option("protocol", protocol_bits.into());
             }
         }
 
 
         if uri.has_host() {
-            connection_factory_builder.option("host", OptionValue::String(uri.host_str().unwrap().to_string()));
+            connection_factory_builder.option("host", uri.host_str().unwrap().into());
             if !uri.username().is_empty() {
-                connection_factory_builder.option("user", OptionValue::String(uri.username().to_string()));
+                connection_factory_builder.option("user", uri.username().into());
             }
 
             if let Some(password) = uri.password() {
-                connection_factory_builder.option("password", OptionValue::String(password.to_string()));
+                connection_factory_builder.option("password", password.into());
             }
         }
 
         if let Some(port) = uri.port() {
-            connection_factory_builder.option("port", OptionValue::String(port.to_string()));
+            connection_factory_builder.option("port", port.into());
         }
 
         // TODO: validate this
         if !uri.path().is_empty() {
-            connection_factory_builder.option("database", OptionValue::String(uri.path().to_string()));
+            connection_factory_builder.option("database", uri.path().into());
         }
 
         for (k, v) in uri.query_pairs() {
             // TODO: prohibit certain options
-            connection_factory_builder.option(k, OptionValue::String(v.to_string()));
+            connection_factory_builder.option(k, v.into());
 
         }
 
