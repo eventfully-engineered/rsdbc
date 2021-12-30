@@ -34,8 +34,6 @@ pub trait ConnectionFactory: 'static + Send + Sync {
 
 #[derive(Debug, Clone)]
 pub struct ConnectionFactoryOptions {
-
-    // TODO: how to make this a heterogeneous collection. Need to use Enum or Trait Object
     pub options: HashMap<String, OptionValue>,
 }
 
@@ -69,6 +67,8 @@ impl ConnectionFactoryOptions {
         self.options.insert(key.into(), value);
         self
     }
+
+    // TODO: add helper fns for various types
 
     pub fn get_value(&self, option: &str) -> Option<&OptionValue> {
         self.options.get(option)
@@ -576,4 +576,27 @@ pub enum SslMode {
     Prefer,
     /// Require the use of TLS.
     Require,
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use crate::connection::ConnectionFactoryOptions;
+
+    #[test]
+    fn programmatic_connection_factory_builder() {
+        let options = HashMap::from([
+            ("lock_timeout", "10s"),
+            ("statement_timeout", "5m"),
+        ]);
+
+        let connection_factory_options = ConnectionFactoryOptions::new()
+            .option("driver", "postgresql".into())
+            .option("port", 5432.into())
+            .option("options", options.into());
+
+
+
+    }
 }

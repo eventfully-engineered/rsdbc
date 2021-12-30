@@ -384,7 +384,6 @@ impl<'a> Iterator for ValuesIter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use r2dbc::{Connection, DataType, ConnectionFactory};
     use std::{collections::HashMap, sync::Arc};
     use crate::options::SqliteConnectOptions;
 

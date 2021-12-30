@@ -73,7 +73,7 @@ pub enum OptionValue {
     Bool(bool),
     String(String),
     Duration(Duration), // Chrono Duration? Should that be a feature?
-    Map(HashMap<String, String>),
+    Map(HashMap<String, String>), // TODO: what type should the generics be?
 }
 
 // TODO: this might be a good time to use a macro
@@ -129,6 +129,18 @@ impl From<Url> for OptionValue {
 impl From<HashMap<String, String>> for OptionValue {
     fn from(value: HashMap<String, String>) -> Self {
         OptionValue::Map(value)
+    }
+}
+
+// TODO: this is icky...is there a better way?
+impl From<HashMap<&str, &str>> for OptionValue {
+    fn from(value: HashMap<&str, &str>) -> Self {
+        let mut map = HashMap::new();
+        for (k, v) in value {
+            map.insert(k.to_string(), v.to_string());
+        }
+
+        OptionValue::Map(map)
     }
 }
 
