@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::time::Duration;
 use futures::future::BoxFuture;
 use url::Url;
@@ -170,12 +171,17 @@ impl ConnectionFactoryOptions {
         self.options.contains_key(option)
     }
 
-    // TODO: clean this up
-    // TODO: implement FromStr
-    pub fn parse<S: Into<String>>(url: S) -> Result<Self> {
-        let url = url.into();
+    pub fn parse<S: AsRef<str>>(url: S) -> Result<Self> {
+        url.as_ref().parse()
+    }
+}
 
-        let u = Url::parse(url.as_str())?;
+impl FromStr for ConnectionFactoryOptions {
+    type Err = R2dbcErrors;
+
+    // TODO: clean this up
+    fn from_str(s: &str) -> Result<Self> {
+        let u = Url::parse(s)?;
         println!("{}", u);
         println!("path: {}", u.path());
         println!("host: {}", u.host_str().unwrap());
@@ -183,16 +189,16 @@ impl ConnectionFactoryOptions {
         println!("fragment: {}", u.fragment().or(Some("")).unwrap());
         println!("scheme: {}", u.scheme());
 
-        validate(&url)?;
+        validate(&s)?;
 
-        let scheme_parts: Vec<&str> = url.splitn(3, ":").collect();
+        let scheme_parts: Vec<&str> = s.splitn(3, ":").collect();
         let scheme = scheme_parts[0];
         let driver = scheme_parts[1];
         let protocol = scheme_parts[2];
 
         // TODO: use .ok_or here instead?
-        let scheme_specific_part_index = url.find("://").unwrap();
-        let rewritten_url = scheme.to_owned() + &url[scheme_specific_part_index..];
+        let scheme_specific_part_index = s.find("://").unwrap();
+        let rewritten_url = scheme.to_owned() + &s[scheme_specific_part_index..];
 
         let uri = Url::parse(rewritten_url.as_str())?;
 
@@ -240,7 +246,6 @@ impl ConnectionFactoryOptions {
 
         Ok(connection_factory_builder.build())
     }
-
 }
 
 pub trait ConnectionFactoryProvider {
@@ -695,14 +700,14 @@ mod tests {
     }
 
     #[test]
-    fn missing_option_should_return_none() {
+    fn missing_connection_factory_option_should_return_none() {
         let connection_factory_options = ConnectionFactoryOptionsBuilder::new().build();
 
         assert_eq!(None, connection_factory_options.get_value("driver"));
     }
 
     #[test]
-    fn has_option_should_return_appropriate_bool() {
+    fn connection_factory_has_option_should_return_appropriate_bool() {
         let connection_factory_options = ConnectionFactoryOptionsBuilder::new()
             .add_option("driver", "postgresql".into())
             .build();
@@ -710,4 +715,5 @@ mod tests {
         assert!(connection_factory_options.has_option("driver"));
         assert!(!connection_factory_options.has_option("port"));
     }
+
 }

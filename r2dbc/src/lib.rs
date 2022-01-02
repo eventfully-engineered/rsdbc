@@ -24,7 +24,7 @@ impl ConnectionFactories {
     // }
 
     /// Returns a [ConnectionFactory] from an available implementation, created from a Connection URL.
-    fn new(url: String) -> std::result::Result<Box<dyn ConnectionFactory>, Box<dyn StdError>> {
+    fn new(url: &str) -> std::result::Result<Box<dyn ConnectionFactory>, Box<dyn StdError>> {
         let options = ConnectionFactoryOptions::parse(url)?;
         return Self::create(options);
     }
@@ -75,7 +75,6 @@ impl ConnectionFactories {
 
 
 
-
 // TODO: call this Database? Engine? Backend?
 pub enum DB {
     MySQL,
@@ -106,10 +105,11 @@ impl FromStr for DB {
 
 #[cfg(test)]
 mod tests {
-    use crate::ConnectionFactoryOptions;
+    use crate::{ConnectionFactories, ConnectionFactoryOptions};
 
     #[test]
     fn parse() {
+        ConnectionFactories::new("");
         let result = ConnectionFactoryOptions::parse("postgres://postgres:password@localhost/test");
         assert!(result.is_ok());
 
