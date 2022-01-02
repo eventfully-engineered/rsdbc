@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Duration;
 use futures::future::BoxFuture;
 use url::Url;
 use crate::{OptionValue, R2dbcErrors, Result};
@@ -31,6 +32,65 @@ pub trait ConnectionFactory: 'static + Send + Sync {
     fn get_metadata(&self) -> Box<dyn ConnectionFactoryMetadata>;
 }
 
+#[derive(Debug, Clone)]
+pub struct ConnectionFactoryOptionsBuilder {
+    pub options: HashMap<String, OptionValue>,
+}
+
+impl ConnectionFactoryOptionsBuilder {
+
+    pub fn new() -> Self {
+        Self {
+            options: Default::default()
+        }
+    }
+
+    pub fn build(&self) -> ConnectionFactoryOptions {
+        ConnectionFactoryOptions::from(self.options.to_owned())
+    }
+
+    pub fn from_options(connection_factory_options: ConnectionFactoryOptions) -> Self {
+        let mut options = HashMap::new();
+        for (key, value) in connection_factory_options.options {
+            options.insert(key, value);
+        }
+
+        Self {
+            options
+        }
+    }
+
+    pub fn add_option<K: Into<String>>(&mut self, key: K, value: OptionValue) -> &mut Self {
+        self.options.insert(key.into(), value);
+        self
+    }
+
+    pub fn add_bool<K: Into<String>>(&mut self, key: K, value: bool) -> &mut Self {
+        self.options.insert(key.into(), value.into());
+        self
+    }
+
+    pub fn add_duration<K: Into<String>>(&mut self, key: K, value: Duration) -> &mut Self {
+        self.options.insert(key.into(), value.into());
+        self
+    }
+
+    pub fn i32<K: Into<String>>(&mut self, key: K, value: i32) -> &mut Self {
+        self.options.insert(key.into(), value.into());
+        self
+    }
+
+    pub fn add_map<K: Into<String>>(&mut self, key: K, value: HashMap<String, String>) -> &mut Self {
+        self.options.insert(key.into(), value.into());
+        self
+    }
+
+    pub fn add_string<K: Into<String>>(&mut self, key: K, value: String) -> &mut Self {
+        self.options.insert(key.into(), value.into());
+        self
+    }
+
+}
 
 #[derive(Debug, Clone)]
 pub struct ConnectionFactoryOptions {
@@ -52,34 +112,66 @@ impl ConnectionFactoryOptions {
         }
     }
 
-    pub fn from_options(connection_factory_options: ConnectionFactoryOptions) -> Self {
-        let mut options = HashMap::new();
-        for (key, value) in connection_factory_options.options {
-            options.insert(key, value);
-        }
-
-        Self {
-            options
-        }
-    }
-
-    pub fn option<K: Into<String>>(&mut self, key: K, value: OptionValue) -> &mut Self {
-        self.options.insert(key.into(), value);
-        self
-    }
-
-    // TODO: add helper fns for various types
-
     pub fn get_value(&self, option: &str) -> Option<&OptionValue> {
         self.options.get(option)
     }
+
+    pub fn try_as_bool(&self, option: &str) -> Result<bool> {
+        let value = self.get_value(option);
+        if value.is_none() {
+            // TODO: missing value?
+            return Err(R2dbcErrors::Unsupported("".to_string()));
+        }
+        match value.unwrap() {
+            OptionValue::Bool(v) => {
+                Ok(*v)
+            }
+            OptionValue::Int(v) => {
+                Ok(*v != 0)
+            }
+            OptionValue::String(v) => {
+                match v.as_str() {
+                    "true" => Ok(true),
+                    "false" => Ok(false),
+                    "yes" => Ok(true),
+                    "no" => Ok(false),
+                    "1" => Ok(true),
+                    "0" => Ok(false),
+                    _ => Err(R2dbcErrors::Unsupported("".to_string()))
+                }
+            }
+            _ => Err(R2dbcErrors::Unsupported("".to_string()))
+        }
+    }
+
+    pub fn try_as_i32(&self, option: &str) -> Result<i32> {
+        let value = self.get_value(option);
+        if value.is_none() {
+            // TODO: missing value?
+            return Err(R2dbcErrors::Unsupported("".to_string()));
+        }
+        match value.unwrap() {
+            OptionValue::Bool(v) => {
+                Ok(*v as i32)
+            }
+            OptionValue::Int(v) => {
+                Ok(*v)
+            }
+            OptionValue::String(v) => {
+                // let my_int: i32 = my_string.parse().unwrap();
+                Ok(v.parse::<i32>()?)
+            }
+            _ => Err(R2dbcErrors::Unsupported("".to_string()))
+        }
+    }
+
 
     pub fn has_option(&self, option: &str) -> bool {
         self.options.contains_key(option)
     }
 
     // TODO: clean this up
-    // TODO : implement FromStr
+    // TODO: implement FromStr
     pub fn parse<S: Into<String>>(url: S) -> Result<Self> {
         let url = url.into();
 
@@ -105,48 +197,48 @@ impl ConnectionFactoryOptions {
         let uri = Url::parse(rewritten_url.as_str())?;
 
         // TODO: builder
-        let mut connection_factory_builder = ConnectionFactoryOptions::new();
+        let mut connection_factory_builder = ConnectionFactoryOptionsBuilder::new();
         // TODO: ssl?
 
-        connection_factory_builder.option("driver", driver.into());
+        connection_factory_builder.add_option("driver", driver.into());
 
         let protocol_end = protocol.find("://");
         if let Some(protocol_end) = protocol_end {
             let protocol_bits = &protocol[..protocol_end];
             if !protocol_bits.trim().is_empty() {
-                connection_factory_builder.option("protocol", protocol_bits.into());
+                connection_factory_builder.add_option("protocol", protocol_bits.into());
             }
         }
 
 
         if uri.has_host() {
-            connection_factory_builder.option("host", uri.host_str().unwrap().into());
+            connection_factory_builder.add_option("host", uri.host_str().unwrap().into());
             if !uri.username().is_empty() {
-                connection_factory_builder.option("user", uri.username().into());
+                connection_factory_builder.add_option("user", uri.username().into());
             }
 
             if let Some(password) = uri.password() {
-                connection_factory_builder.option("password", password.into());
+                connection_factory_builder.add_option("password", password.into());
             }
         }
 
         if let Some(port) = uri.port() {
-            connection_factory_builder.option("port", port.into());
+            connection_factory_builder.add_option("port", port.into());
         }
 
         // TODO: validate this
         if !uri.path().is_empty() {
-            connection_factory_builder.option("database", uri.path().into());
+            connection_factory_builder.add_option("database", uri.path().into());
         }
 
         for (k, v) in uri.query_pairs() {
             // TODO: prohibit certain options
-            connection_factory_builder.option(k, v.into());
+            connection_factory_builder.add_option(k, v.into());
 
         }
 
 
-        Ok(connection_factory_builder)
+        Ok(connection_factory_builder.build())
     }
 
 }
@@ -582,7 +674,8 @@ pub enum SslMode {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use crate::connection::ConnectionFactoryOptions;
+    use crate::connection::{ConnectionFactoryOptions, ConnectionFactoryOptionsBuilder};
+    use crate::R2dbcErrors;
 
     #[test]
     fn programmatic_connection_factory_builder() {
@@ -591,12 +684,30 @@ mod tests {
             ("statement_timeout", "5m"),
         ]);
 
-        let connection_factory_options = ConnectionFactoryOptions::new()
-            .option("driver", "postgresql".into())
-            .option("port", 5432.into())
-            .option("options", options.into());
+        let connection_factory_options = ConnectionFactoryOptionsBuilder::new()
+            .add_option("driver", "postgresql".into())
+            .add_string("localhost", "localhost".to_string())
+            .add_option("port", 5432.into())
+            .add_option("options", options.into())
+            .build();
 
+        assert_eq!(5432, connection_factory_options.try_as_i32("port").unwrap());
+    }
 
+    #[test]
+    fn missing_option_should_return_none() {
+        let connection_factory_options = ConnectionFactoryOptionsBuilder::new().build();
 
+        assert_eq!(None, connection_factory_options.get_value("driver"));
+    }
+
+    #[test]
+    fn has_option_should_return_appropriate_bool() {
+        let connection_factory_options = ConnectionFactoryOptionsBuilder::new()
+            .add_option("driver", "postgresql".into())
+            .build();
+
+        assert!(connection_factory_options.has_option("driver"));
+        assert!(!connection_factory_options.has_option("port"));
     }
 }

@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::collections::HashMap;
 use std::time::Duration;
 use url::Url;
@@ -66,15 +66,16 @@ impl TransactionOptions {
 // TODO: Rename to ConfigurationValue??
 // TODO: improve experience with &str
 // TODO: add convenience methods to get values of a certain type back. Should be Result<blah>. TryInto?
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum OptionValue {
-    Int(i32),
     Bool(bool),
-    String(String),
     Duration(Duration), // Chrono Duration? Should that be a feature?
+    Int(i32),
     Map(HashMap<String, String>), // TODO: what type should the generics be?
+    String(String),
 }
+
 
 // TODO: this might be a good time to use a macro
 // TODO: implement others

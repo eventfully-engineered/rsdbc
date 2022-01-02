@@ -1,3 +1,4 @@
+use std::num::ParseIntError;
 use thiserror::Error;
 use url::Url;
 
@@ -18,6 +19,9 @@ pub enum R2dbcErrors {
 
     #[error("URL parse error: `{0}`")]
     UrlParseError(#[from] url::ParseError),
+
+    #[error("Int parse error: `{0}`")]
+    ParseIntError(#[from] ParseIntError),
 
     #[error("Unknown Database")]
     UnknownDatabase,
