@@ -27,5 +27,6 @@ jobs:
           sleep 15
           cd ../rsdbc
           cargo publish
+          sleep 15
           cd ../rsdbc-cli
           cargo publish
