@@ -1,6 +1,6 @@
 # Rust Relational Database Connectivity (RSDBC)
 
-R<sup>2</sup>DBC (R-squared DBC) aka Rust Relation Database Connectivity or just Rust Database Connectivity is a common API around accessing relational databases. This was initially inspired by [RDBC](https://github.com/tokio-rs/rdbc) and similar to that project RSDBC is not attempting to build new drivers but instead wrap existing drivers around a common API.
+R<sup>2</sup>DBC (R-squared DBC) aka Rust Relational Database Connectivity or just Rust Database Connectivity is a common API around accessing relational databases. This was initially inspired by [RDBC](https://github.com/tokio-rs/rdbc) and similar to that project RSDBC is not attempting to build new drivers but instead wrap existing drivers around a common API.
 
 NOTE: WIP. Placeholder. Nothing to see here at the moment.
 
