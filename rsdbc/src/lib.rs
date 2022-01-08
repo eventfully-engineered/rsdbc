@@ -35,6 +35,7 @@ impl ConnectionFactories {
 
     fn create(options: ConnectionFactoryOptions) -> std::result::Result<Box<dyn ConnectionFactory>, Box<dyn StdError>> {
         // TODO: constant
+        println!("{:?}", options);
         let driver = options.get_value("driver");
         if driver.is_none() {
             return Err(Box::new(RsdbcErrors::UnknownDatabase));
@@ -108,14 +109,14 @@ mod tests {
     #[test]
     fn connection_factories_new_should_create_connection_factory_for_valid_connection_string() {
         let connection_factory_result = ConnectionFactories::new("postgres://admin:password@localhost/test");
-        assert!(result.is_ok());
+        assert!(connection_factory_result.is_ok());
     }
 
     #[test]
     fn connection_factories_new_should_create_connection_factory_for_valid_options() {
         let options = ConnectionFactoryOptions::parse("postgres://admin:password@localhost/test").unwrap();
         let connection_factory_result = ConnectionFactories::from(options);
-        assert!(result.is_ok());
+        assert!(connection_factory_result.is_ok());
     }
 
     // TODO: invalid url should return error

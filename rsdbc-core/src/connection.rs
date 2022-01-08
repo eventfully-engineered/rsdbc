@@ -191,30 +191,33 @@ impl FromStr for ConnectionFactoryOptions {
 
         validate(&s)?;
 
-        let scheme_parts: Vec<&str> = s.splitn(3, ":").collect();
-        let scheme = scheme_parts[0];
-        let driver = scheme_parts[1];
-        let protocol = scheme_parts[2];
+        // let scheme_parts: Vec<&str> = s.splitn(3, ":").collect();
+        // let scheme = scheme_parts[0];
+        // let driver = scheme_parts[1];
+        // let protocol = scheme_parts[2];
 
         // TODO: use .ok_or here instead?
-        let scheme_specific_part_index = s.find("://").unwrap();
-        let rewritten_url = scheme.to_owned() + &s[scheme_specific_part_index..];
-
-        let uri = Url::parse(rewritten_url.as_str())?;
+        // let scheme_specific_part_index = s.find("://").unwrap();
+        // let rewritten_url = scheme.to_owned() + &s[scheme_specific_part_index..];
+        // let uri = Url::parse(rewritten_url.as_str())?;
+        let uri = Url::parse(s)?;
 
         // TODO: builder
         let mut connection_factory_builder = ConnectionFactoryOptionsBuilder::new();
         // TODO: ssl?
 
-        connection_factory_builder.add_option("driver", driver.into());
 
-        let protocol_end = protocol.find("://");
-        if let Some(protocol_end) = protocol_end {
-            let protocol_bits = &protocol[..protocol_end];
-            if !protocol_bits.trim().is_empty() {
-                connection_factory_builder.add_option("protocol", protocol_bits.into());
-            }
-        }
+        connection_factory_builder.add_option("driver", uri.scheme().into());
+
+        // connection_factory_builder.add_option("driver", driver.into());
+
+        // let protocol_end = protocol.find("://");
+        // if let Some(protocol_end) = protocol_end {
+        //     let protocol_bits = &protocol[..protocol_end];
+        //     if !protocol_bits.trim().is_empty() {
+        //         connection_factory_builder.add_option("protocol", protocol_bits.into());
+        //     }
+        // }
 
 
         if uri.has_host() {
@@ -733,7 +736,7 @@ mod tests {
 
     #[test]
     fn connection_factory_options_should_implement_from_str() {
-        let options: Result<ConnectionFactoryOptions> = "postgres://admin:password@localhost/test".parse();
+        let result: Result<ConnectionFactoryOptions> = "postgres://admin:password@localhost/test".parse();
         assert!(result.is_ok());
     }
 }
