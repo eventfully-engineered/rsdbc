@@ -1,8 +1,8 @@
 use futures::future::BoxFuture;
 use std::time::Duration;
 use url::Url;
-use r2dbc_core::connection::{Batch, Connection, ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions, ConnectionFactoryProvider, ConnectionMetadata, IsolationLevel, SslMode, Statement, ValidationDepth};
-use r2dbc_core::Result;
+use rsdbc_core::connection::{Batch, Connection, ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions, ConnectionFactoryProvider, ConnectionMetadata, IsolationLevel, SslMode, Statement, ValidationDepth};
+use rsdbc_core::Result;
 
 
 pub struct MySqlConnectionConfiguration {

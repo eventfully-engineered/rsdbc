@@ -2,13 +2,13 @@ use std::borrow::{Borrow, Cow};
 use std::collections::HashMap;
 use std::time::Duration;
 use url::Url;
-use crate::error::R2dbcErrors;
+use crate::error::RsdbcErrors;
 
 pub mod error;
 pub mod connection;
 
-/// R2DBC Result type
-pub type Result<T> = std::result::Result<T, R2dbcErrors>;
+/// RSDBC Result type
+pub type Result<T> = std::result::Result<T, RsdbcErrors>;
 
 
 #[derive(Debug, Clone)]
@@ -224,7 +224,7 @@ pub trait Row<'stmt> {
     fn get_via_name<R>(&self, name: &str) -> R;
 
 
-    // from java R2DBC - extends readable
+    // from java RSDBC - extends readable
     // RowMetadata getMetadata();
 
 }
@@ -290,7 +290,7 @@ pub trait TypeInfo {
     fn name(&self) -> &str;
 }
 
-pub enum R2dbcType {
+pub enum RsdbcType {
     Char,
     Varchar,
     Nchar,
@@ -317,37 +317,37 @@ pub enum R2dbcType {
     Collection,
 }
 
-impl TypeInfo for R2dbcType {
+impl TypeInfo for RsdbcType {
     fn rust_type(&self) -> &'static str {
         todo!()
     }
 
     fn name(&self) -> &str {
         match self {
-            R2dbcType::Char => "CHAR",
-            R2dbcType::Varchar => "VARCHAR",
-            R2dbcType::Nchar => "NCHAR",
-            R2dbcType::Nvarchar => "NVARCHAR",
-            R2dbcType::Clob => "CLOB",
-            R2dbcType::Nclob => "NCLOB",
-            R2dbcType::Boolean => "BOOLEAN",
-            R2dbcType::Varbinary => "VARBINARY",
-            R2dbcType::Blob => "BLOB",
-            R2dbcType::Integer => "INTEGER",
-            R2dbcType::Tinyint => "TINYINT",
-            R2dbcType::Smallint => "SMALLINT",
-            R2dbcType::Bigint => "BIGINT",
-            R2dbcType::Numeric => "NUMERIC",
-            R2dbcType::Decimal => "DECIMAL",
-            R2dbcType::Float => "FLOAT",
-            R2dbcType::Real => "REAL",
-            R2dbcType::Double => "DOUBLE",
-            R2dbcType::Date => "DATE",
-            R2dbcType::Time => "TIME",
-            R2dbcType::TimeWithTimeZone => "TIME_WITH_TIME_ZONE",
-            R2dbcType::Timestamp => "TIMESTAMP",
-            R2dbcType::TimestampWithTimeZone => "TIMESTAMP_WITH_TIME_ZONE",
-            R2dbcType::Collection => "COLLECTION",
+            RsdbcType::Char => "CHAR",
+            RsdbcType::Varchar => "VARCHAR",
+            RsdbcType::Nchar => "NCHAR",
+            RsdbcType::Nvarchar => "NVARCHAR",
+            RsdbcType::Clob => "CLOB",
+            RsdbcType::Nclob => "NCLOB",
+            RsdbcType::Boolean => "BOOLEAN",
+            RsdbcType::Varbinary => "VARBINARY",
+            RsdbcType::Blob => "BLOB",
+            RsdbcType::Integer => "INTEGER",
+            RsdbcType::Tinyint => "TINYINT",
+            RsdbcType::Smallint => "SMALLINT",
+            RsdbcType::Bigint => "BIGINT",
+            RsdbcType::Numeric => "NUMERIC",
+            RsdbcType::Decimal => "DECIMAL",
+            RsdbcType::Float => "FLOAT",
+            RsdbcType::Real => "REAL",
+            RsdbcType::Double => "DOUBLE",
+            RsdbcType::Date => "DATE",
+            RsdbcType::Time => "TIME",
+            RsdbcType::TimeWithTimeZone => "TIME_WITH_TIME_ZONE",
+            RsdbcType::Timestamp => "TIMESTAMP",
+            RsdbcType::TimestampWithTimeZone => "TIMESTAMP_WITH_TIME_ZONE",
+            RsdbcType::Collection => "COLLECTION",
         }
     }
 }
@@ -369,7 +369,7 @@ pub enum Nullability {
 }
 
 
-/// R2DBC Data Types
+/// RSDBC Data Types
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DataType {
     Bool,

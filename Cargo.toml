@@ -1,12 +1,12 @@
 [workspace]
 
 members = [
-    "r2dbc",
-    "r2dbc-core",
-    "r2dbc-cli",
-    "r2dbc-mysql",
-    "r2dbc-postgres",
-    "r2dbc-sqlite",
+    "rsdbc",
+    "rsdbc-core",
+    "rsdbc-cli",
+    "rsdbc-mysql",
+    "rsdbc-postgres",
+    "rsdbc-sqlite",
 ]
 
 

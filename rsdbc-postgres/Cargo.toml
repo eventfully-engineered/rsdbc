@@ -1,6 +1,6 @@
 [package]
-name = "r2dbc-postgres"
-description = "Postgres R2DBC Driver"
+name = "rsdbc-postgres"
+description = "Postgres RSDBC Driver"
 version = "0.0.1"
 authors = ["seancarroll"]
 edition = "2021"
@@ -18,7 +18,7 @@ native-tls = "0.2"
 postgres = "0.19.2"
 postgres-native-tls = "0.5.0"
 tokio-postgres = { version = "0.7.2" }
-r2dbc-core = { path = "../r2dbc-core", version = "0.0.1" }
+rsdbc-core = { path = "../rsdbc-core", version = "0.0.1" }
 sqlparser = "0.12.0"
 thiserror = "1.0.29"
 tokio = "1.15.0"

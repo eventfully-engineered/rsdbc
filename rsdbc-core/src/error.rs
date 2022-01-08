@@ -2,12 +2,12 @@ use std::num::ParseIntError;
 use thiserror::Error;
 use url::Url;
 
-/// R2DBC Errors
+/// RSDBC Errors
 
 // TODO: do we need this error?
 #[derive(Error, Debug)]
 #[non_exhaustive]
-pub enum R2dbcErrors {
+pub enum RsdbcErrors {
     #[error("Configuration error: `{0}`")]
     Configuration(String),
 
@@ -27,7 +27,7 @@ pub enum R2dbcErrors {
     UnknownDatabase,
 }
 
-impl R2dbcErrors {
+impl RsdbcErrors {
 
     // #[allow(dead_code)]
     // #[inline]
@@ -38,13 +38,13 @@ impl R2dbcErrors {
     #[allow(dead_code)]
     #[inline]
     pub fn config(err: String) -> Self {
-        R2dbcErrors::Configuration(err)
+        RsdbcErrors::Configuration(err)
     }
 }
 
 #[derive(Debug)]
 #[non_exhaustive]
-pub enum R2dbcError {
+pub enum RsdbcError {
     BadGrammar,
     General,
     NonTransient,

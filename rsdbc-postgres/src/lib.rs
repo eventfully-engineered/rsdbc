@@ -15,13 +15,13 @@ use std::fs;
 
 use tracing_subscriber::fmt::time;
 use url::Url;
-use r2dbc_core::connection::{Batch, Connection, ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions, ConnectionFactoryProvider, ConnectionMetadata, IsolationLevel, Statement, ValidationDepth};
-use r2dbc_core::error::R2dbcErrors;
-use r2dbc_core::{OptionValue, Result, TransactionDefinition};
+use rsdbc_core::connection::{Batch, Connection, ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions, ConnectionFactoryProvider, ConnectionMetadata, IsolationLevel, Statement, ValidationDepth};
+use rsdbc_core::error::RsdbcErrors;
+use rsdbc_core::{OptionValue, Result, TransactionDefinition};
 
 // TODO: should this take raw string?
 pub struct  PostgresqlConnectionConfiguration {
-    // application_name = "r2dbc-postgresql"
+    // application_name = "rsdbc-postgresql"
     pub application_name: String,
     pub auto_detect_extensions: bool, // true
     pub compatibility_mode: bool,
@@ -54,7 +54,7 @@ impl PostgresqlConnectionConfiguration {
 
     fn new() -> Self {
         Self {
-            application_name: "r2dbc-postgresql".to_string(), // TODO: set default somewhere else
+            application_name: "rsdbc-postgresql".to_string(), // TODO: set default somewhere else
             auto_detect_extensions: false,
             compatibility_mode: false,
             connection_timeout: Default::default(),
@@ -423,8 +423,8 @@ impl ConnectionFactoryProvider for PostgresqlConnectionFactory {
     }
 }
 
-fn to_r2dbc_err(e: postgres::error::Error) -> r2dbc_core::error::R2dbcErrors {
-    r2dbc_core::error::R2dbcErrors::General(format!("{:?}", e))
+fn to_rsdbc_err(e: postgres::error::Error) -> rsdbc_core::error::RsdbcErrors {
+    rsdbc_core::error::RsdbcErrors::General(format!("{:?}", e))
 }
 
 

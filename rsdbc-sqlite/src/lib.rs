@@ -9,8 +9,8 @@ use crate::connection::SqliteConnectionMetadata;
 use rusqlite::Error as RusqliteError;
 use std::sync::{Arc, Mutex};
 use std::rc::Rc;
-use r2dbc_core::connection::{Batch, ConnectionMetadata, IsolationLevel, SQLResult, Statement, ValidationDepth};
-use r2dbc_core::{DatabaseMetadata, Result, ResultSetMetaData};
+use rsdbc_core::connection::{Batch, ConnectionMetadata, IsolationLevel, SQLResult, Statement, ValidationDepth};
+use rsdbc_core::{DatabaseMetadata, Result, ResultSetMetaData};
 
 // https://tedspence.com/investigating-rust-with-sqlite-53d1f9a41112
 // https://www.reddit.com/r/rust/comments/dqa4t3/how_to_put_two_variables_one_borrows_from_other/
@@ -18,9 +18,9 @@ use r2dbc_core::{DatabaseMetadata, Result, ResultSetMetaData};
 
 
 
-/// Convert a Sqlite error into an R2DBC error
-fn to_r2dbc_err(e: rusqlite::Error) -> r2dbc_core::error::R2dbcErrors {
-    r2dbc_core::error::R2dbcErrors::General(format!("{:?}", e))
+/// Convert a Sqlite error into an RSDBC error
+fn to_rsdbc_err(e: rusqlite::Error) -> rsdbc_core::error::RsdbcErrors {
+    rsdbc_core::error::RsdbcErrors::General(format!("{:?}", e))
 }
 
 // #[derive(Debug)]
@@ -102,7 +102,7 @@ impl SqliteConnection {
     }
 }
 
-impl r2dbc_core::connection::Connection for SqliteConnection {
+impl rsdbc_core::connection::Connection for SqliteConnection {
     // type Statement = SqliteStatement<'conn>;
 
     // TODO: result?
@@ -110,7 +110,7 @@ impl r2dbc_core::connection::Connection for SqliteConnection {
         // TODO: call begin_transaction_with_definition with an empty instance
         // let mut connection = self.conn.take().unwrap();
         // let mut connection = self.conn.lock().unwrap().take().unwrap();
-        // connection.transaction().map_err(to_r2dbc_err);
+        // connection.transaction().map_err(to_rsdbc_err);
         // self.transaction = Some(trans);
         Ok(())
     }
@@ -132,7 +132,7 @@ impl r2dbc_core::connection::Connection for SqliteConnection {
         // let mut _c = self.conn.get_mut().unwrap().take();
         _c = None;
 
-        // close_result.map_err(move |e| to_r2dbc_err(e.1))?;
+        // close_result.map_err(move |e| to_rsdbc_err(e.1))?;
         Ok(())
     }
 
@@ -162,21 +162,21 @@ impl r2dbc_core::connection::Connection for SqliteConnection {
         // let mut c = self.conn.take();
         // let stmt = c.unwrap()
         //     .prepare(sql)
-        //     .map_err(to_r2dbc_err)?;
+        //     .map_err(to_rsdbc_err)?;
 
         // let c: &'conn rusqlite::Connection = self.conn.unwrap();
 
         // let stmt: rusqlite::Statement = self.conn.unwrap()
         //     .prepare(sql)
-        //     .map_err(to_r2dbc_err)?;
+        //     .map_err(to_rsdbc_err)?;
 
         // let stmt = self.conn.get_mut().unwrap().take().unwrap()
         //     .prepare(sql)
-        //     .map_err(to_r2dbc_err)?;
+        //     .map_err(to_rsdbc_err)?;
 
         // let stmt = self.conn.lock().unwrap().take().unwrap()
         //     .prepare(sql)
-        //     .map_err(to_r2dbc_err)?;
+        //     .map_err(to_rsdbc_err)?;
 
         // let stmt = self.conn
         //     .as_ref()
@@ -186,7 +186,7 @@ impl r2dbc_core::connection::Connection for SqliteConnection {
         //     .lock()
         //     .unwrap()
         //     .prepare(sql)
-        //     .map_err(to_r2dbc_err)?;
+        //     .map_err(to_rsdbc_err)?;
         //
         // Ok(Box::new(SqliteStatement {
         //     stmt,
@@ -258,7 +258,7 @@ pub struct SqliteStatement<'a> {
     stmt: rusqlite::Statement<'a>,
 }
 
-impl r2dbc_core::connection::Statement<'_> for SqliteStatement<'_> {
+impl rsdbc_core::connection::Statement<'_> for SqliteStatement<'_> {
     fn add(&mut self) -> &mut Self where Self: Sized {
         todo!()
     }
@@ -304,7 +304,7 @@ impl DatabaseMetadata for SqliteDatabaseMetadata {
 
 }
 
-impl<'stmt> r2dbc_core::ResultSet for SqliteResultSet<'stmt> {
+impl<'stmt> rsdbc_core::ResultSet for SqliteResultSet<'stmt> {
     fn meta_data(&self) -> Result<Box<dyn ResultSetMetaData>> {
         todo!()
     }
@@ -350,16 +350,16 @@ impl<'stmt> r2dbc_core::ResultSet for SqliteResultSet<'stmt> {
     }
 }
 
-fn to_r2dbc_type(t: Option<&str>) -> r2dbc_core::DataType {
+fn to_rsdbc_type(t: Option<&str>) -> rsdbc_core::DataType {
     //TODO implement for real
     match t {
-        Some("INT") => r2dbc_core::DataType::Integer,
-        _ => r2dbc_core::DataType::Utf8,
+        Some("INT") => rsdbc_core::DataType::Integer,
+        _ => rsdbc_core::DataType::Utf8,
     }
 }
 
-struct Values<'a>(&'a [r2dbc_core::Value]);
-struct ValuesIter<'a>(std::slice::Iter<'a, r2dbc_core::Value>);
+struct Values<'a>(&'a [rsdbc_core::Value]);
+struct ValuesIter<'a>(std::slice::Iter<'a, rsdbc_core::Value>);
 
 impl<'a> IntoIterator for &'a Values<'a> {
     type Item = &'a dyn rusqlite::types::ToSql;
@@ -374,9 +374,9 @@ impl<'a> Iterator for ValuesIter<'a> {
 
     fn next(&mut self) -> Option<&'a dyn rusqlite::types::ToSql> {
         self.0.next().map(|v| match v {
-            r2dbc_core::Value::String(ref s) => s as &dyn rusqlite::types::ToSql,
-            r2dbc_core::Value::Int32(ref n) => n as &dyn rusqlite::types::ToSql,
-            r2dbc_core::Value::UInt32(ref n) => n as &dyn rusqlite::types::ToSql,
+            rsdbc_core::Value::String(ref s) => s as &dyn rusqlite::types::ToSql,
+            rsdbc_core::Value::Int32(ref n) => n as &dyn rusqlite::types::ToSql,
+            rsdbc_core::Value::UInt32(ref n) => n as &dyn rusqlite::types::ToSql,
         })
     }
 }
@@ -419,7 +419,7 @@ mod tests {
 
 
     #[test]
-    fn execute_query() -> r2dbc_core::Result<()> {
+    fn execute_query() -> rsdbc_core::Result<()> {
         // let mut connection = SqliteConnectOptions::new().connect().await?;
         // let stmt = connection.create_statement("SELECT 1").unwrap();
         // let mut rs = stmt.execute();
@@ -432,8 +432,8 @@ mod tests {
     }
 
     // #[test]
-    // fn execute_query() -> r2dbc::Result<()> {
-    //     let driver: Arc<dyn r2dbc::Driver> = Arc::new(SqliteDriver::new());
+    // fn execute_query() -> rsdbc::Result<()> {
+    //     let driver: Arc<dyn rsdbc::Driver> = Arc::new(SqliteDriver::new());
     //     let url = "";
     //     let mut conn = driver.connect(url, HashMap::new())?;
     //     execute(&mut *conn, "DROP TABLE IF EXISTS test", &vec![])?;
@@ -441,7 +441,7 @@ mod tests {
     //     execute(
     //         &mut *conn,
     //         "INSERT INTO test (a) VALUES (?)",
-    //         &vec![r2dbc::Value::Int32(123)],
+    //         &vec![rsdbc::Value::Int32(123)],
     //     )?;
     //
     //     let mut stmt = conn.prepare("SELECT a FROM test")?;
@@ -462,8 +462,8 @@ mod tests {
     // fn execute(
     //     conn: &mut dyn Connection,
     //     sql: &str,
-    //     values: &Vec<r2dbc::Value>,
-    // ) -> r2dbc::Result<u64> {
+    //     values: &Vec<rsdbc::Value>,
+    // ) -> rsdbc::Result<u64> {
     //     println!("Executing '{}' with {} params", sql, values.len());
     //     let mut stmt = conn.prepare(sql)?;
     //     stmt.execute_update(values)

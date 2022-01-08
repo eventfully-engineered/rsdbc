@@ -1,11 +1,11 @@
 [package]
-name = "r2dbc-mysql"
-description = " MySQL R2DBC Driver"
+name = "rsdbc-sqlite"
+description = "SQLite RSDBC Driver"
 version = "0.0.1"
 authors = ["seancarroll"]
 edition = "2021"
 readme = "../README.md"
-keywords = ["sql", "mysql"]
+keywords = ["sql", "sqlite"]
 categories = ["database"]
 repository = "https://github.com/eventfully-engineered/r2dbc"
 license = "MIT"
@@ -14,10 +14,10 @@ license = "MIT"
 
 [dependencies]
 futures = { version = "0.3" }
-mysql = "21.0.2"
-mysql_common = "0.28.0"
-#mysql_async = "0.29.0"
-r2dbc-core = { path = "../r2dbc-core", version = "0.0.1" }
-sqlparser = "0.12.0"
-twox-hash = "1.6.1"
+percent-encoding = "2.1.0"
+rsdbc-core = { path = "../rsdbc-core", version = "0.0.1" }
+rusqlite = { version = "0.26.3", features = ["bundled"]}
+thiserror = "1.0.29"
+tracing = "0.1"
+tracing-subscriber = "0.2"
 url = { version = "2.2.2", default-features = false }

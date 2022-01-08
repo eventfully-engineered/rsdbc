@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use futures::future::BoxFuture;
 use url::Url;
-use crate::{OptionValue, R2dbcErrors, Result};
+use crate::{OptionValue, RsdbcErrors, Result};
 
 pub trait ConnectionFactory: 'static + Send + Sync {
     // TODO: should have associated type for Error so that we have multiple error types?
@@ -121,7 +121,7 @@ impl ConnectionFactoryOptions {
         let value = self.get_value(option);
         if value.is_none() {
             // TODO: missing value?
-            return Err(R2dbcErrors::Unsupported("".to_string()));
+            return Err(RsdbcErrors::Unsupported("".to_string()));
         }
         match value.unwrap() {
             OptionValue::Bool(v) => {
@@ -138,10 +138,10 @@ impl ConnectionFactoryOptions {
                     "no" => Ok(false),
                     "1" => Ok(true),
                     "0" => Ok(false),
-                    _ => Err(R2dbcErrors::Unsupported("".to_string()))
+                    _ => Err(RsdbcErrors::Unsupported("".to_string()))
                 }
             }
-            _ => Err(R2dbcErrors::Unsupported("".to_string()))
+            _ => Err(RsdbcErrors::Unsupported("".to_string()))
         }
     }
 
@@ -149,7 +149,7 @@ impl ConnectionFactoryOptions {
         let value = self.get_value(option);
         if value.is_none() {
             // TODO: missing value?
-            return Err(R2dbcErrors::Unsupported("".to_string()));
+            return Err(RsdbcErrors::Unsupported("".to_string()));
         }
         match value.unwrap() {
             OptionValue::Bool(v) => {
@@ -162,7 +162,7 @@ impl ConnectionFactoryOptions {
                 // let my_int: i32 = my_string.parse().unwrap();
                 Ok(v.parse::<i32>()?)
             }
-            _ => Err(R2dbcErrors::Unsupported("".to_string()))
+            _ => Err(RsdbcErrors::Unsupported("".to_string()))
         }
     }
 
@@ -177,7 +177,7 @@ impl ConnectionFactoryOptions {
 }
 
 impl FromStr for ConnectionFactoryOptions {
-    type Err = R2dbcErrors;
+    type Err = RsdbcErrors;
 
     // TODO: clean this up
     fn from_str(s: &str) -> Result<Self> {
@@ -564,7 +564,7 @@ impl IsolationLevel {
             //     io::ErrorKind::InvalidInput,
             //     "the server returned an unexpected response",
             // ))
-            Err(R2dbcErrors::General(String::from("the server returned an unexpected response")))
+            Err(RsdbcErrors::General(String::from("the server returned an unexpected response")))
         }
     }
 
@@ -613,7 +613,7 @@ pub enum ValidationDepth {
 /// Represents an executable statement
 pub trait Statement<'conn> {
 
-    // from java r2dbc
+    // from java rsdbc
     fn add(&mut self) -> &mut Self where Self: Sized; //Box<dyn A>
 
     fn bind_index<T>(&mut self, index: u32, value: T) -> &mut Self where Self: Sized; //Box<dyn A>
@@ -680,7 +680,8 @@ pub enum SslMode {
 mod tests {
     use std::collections::HashMap;
     use crate::connection::{ConnectionFactoryOptions, ConnectionFactoryOptionsBuilder};
-    use crate::R2dbcErrors;
+    use crate::RsdbcErrors;
+    use crate::Result;
 
     #[test]
     fn programmatic_connection_factory_builder() {
@@ -716,4 +717,23 @@ mod tests {
         assert!(!connection_factory_options.has_option("port"));
     }
 
+    #[test]
+    fn should_successfully_parse_valid_connection_string() {
+        let result = ConnectionFactoryOptions::parse("postgres://admin:password@localhost/test");
+        assert!(result.is_ok());
+
+        println!("{:?}", result.unwrap());
+    }
+
+    #[test]
+    fn parse_empty_string_should_return_err() {
+        let result = ConnectionFactoryOptions::parse("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn connection_factory_options_should_implement_from_str() {
+        let options: Result<ConnectionFactoryOptions> = "postgres://admin:password@localhost/test".parse();
+        assert!(result.is_ok());
+    }
 }

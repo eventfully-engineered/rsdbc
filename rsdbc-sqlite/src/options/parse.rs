@@ -6,10 +6,10 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use crate::options::SqliteConnectOptions;
 use percent_encoding::percent_decode_str;
-use r2dbc_core::error::R2dbcErrors;
+use rsdbc_core::error::RsdbcErrors;
 
 impl FromStr for SqliteConnectOptions {
-    type Err = R2dbcErrors;
+    type Err = RsdbcErrors;
 
     fn from_str(mut uri: &str) -> Result<Self, Self::Err> {
         let mut options = Self::new();
@@ -34,7 +34,7 @@ impl FromStr for SqliteConnectOptions {
                 Path::new(
                     &*percent_decode_str(database)
                         .decode_utf8()
-                        .map_err(|e| R2dbcErrors::config(e.to_string()))?,
+                        .map_err(|e| RsdbcErrors::config(e.to_string()))?,
                 ).to_path_buf(),
             );
         }
@@ -65,7 +65,7 @@ impl FromStr for SqliteConnectOptions {
                             }
 
                             _ => {
-                                return Err(R2dbcErrors::Configuration(
+                                return Err(RsdbcErrors::Configuration(
                                     format!("unknown value {:?} for `mode`", value).into(),
                                 ));
                             }
@@ -85,14 +85,14 @@ impl FromStr for SqliteConnectOptions {
                         }
 
                         _ => {
-                            return Err(R2dbcErrors::Configuration(
+                            return Err(RsdbcErrors::Configuration(
                                 format!("unknown value {:?} for `cache`", value).into(),
                             ));
                         }
                     },
 
                     _ => {
-                        return Err(R2dbcErrors::Configuration(
+                        return Err(RsdbcErrors::Configuration(
                             format!(
                                 "unknown query parameter `{}` while parsing connection URI",
                                 key
@@ -108,7 +108,7 @@ impl FromStr for SqliteConnectOptions {
 }
 
 #[test]
-fn parse_in_memory() -> Result<(), R2dbcErrors> {
+fn parse_in_memory() -> Result<(), RsdbcErrors> {
     let options: SqliteConnectOptions = "sqlite::memory:".parse()?;
     assert!(options.in_memory);
     assert!(options.shared_cache);
@@ -129,7 +129,7 @@ fn parse_in_memory() -> Result<(), R2dbcErrors> {
 }
 
 #[test]
-fn parse_read_only() -> Result<(), R2dbcErrors> {
+fn parse_read_only() -> Result<(), RsdbcErrors> {
     let options: SqliteConnectOptions = "sqlite://a.db?mode=ro".parse()?;
     assert!(options.read_only);
     assert_eq!(&*options.filename.to_string_lossy(), "a.db");
@@ -138,7 +138,7 @@ fn parse_read_only() -> Result<(), R2dbcErrors> {
 }
 
 #[test]
-fn parse_shared_in_memory() -> Result<(), R2dbcErrors> {
+fn parse_shared_in_memory() -> Result<(), RsdbcErrors> {
     let options: SqliteConnectOptions = "sqlite://a.db?cache=shared".parse()?;
     assert!(options.shared_cache);
     assert_eq!(&*options.filename.to_string_lossy(), "a.db");
@@ -147,7 +147,7 @@ fn parse_shared_in_memory() -> Result<(), R2dbcErrors> {
 }
 
 #[test]
-fn from_str() -> Result<(), R2dbcErrors> {
+fn from_str() -> Result<(), RsdbcErrors> {
     let options = SqliteConnectOptions::from_str("sqlite://a.db")?;
     assert_eq!(&*options.filename.to_string_lossy(), "a.db");
     assert!(!options.shared_cache);

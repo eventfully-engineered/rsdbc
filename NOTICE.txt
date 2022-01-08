@@ -1,4 +1,4 @@
-Rust Relational Database Connectivity (R2DBC)
+Rust Relational Database Connectivity (RSDBC)
 
 
 https://github.com/tokio-rs/rdbc

@@ -1,9 +1,9 @@
 use thiserror::Error;
-use r2dbc_core::error::R2dbcErrors;
+use rsdbc_core::error::RsdbcErrors;
 
 #[derive(Error, Debug)]
 #[non_exhaustive]
-pub enum SqliteR2dbcError {
+pub enum SqliteRsdbcError {
     // #[error("Configuration error: `{0}`")]
     // Configuration(String),
     //
@@ -23,11 +23,11 @@ pub enum SqliteR2dbcError {
     InvalidProtocol(String),
 }
 
-impl From<SqliteR2dbcError> for R2dbcErrors {
-    fn from(err: SqliteR2dbcError) -> R2dbcErrors {
+impl From<SqliteRsdbcError> for RsdbcErrors {
+    fn from(err: SqliteRsdbcError) -> RsdbcErrors {
         return match err {
-            SqliteR2dbcError::InvalidProtocol(s) => {
-                R2dbcErrors::Unsupported(s)
+            SqliteRsdbcError::InvalidProtocol(s) => {
+                RsdbcErrors::Unsupported(s)
             }
         }
     }

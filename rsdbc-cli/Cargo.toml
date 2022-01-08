@@ -1,0 +1,20 @@
+[package]
+name = "rsdbc-cli"
+description = "Command line tool for querying RSDBC data sources"
+version = "0.0.1"
+authors = ["seancarroll"]
+edition = "2021"
+readme = "../README.md"
+keywords = ["sql"]
+categories = ["database"]
+repository = "https://github.com/eventfully-engineered/r2dbc"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rsdbc = { path = "../rsdbc", version = "0.0.1" }
+rsdbc-mysql = { path = "../rsdbc-mysql", version = "0.0.1" }
+rsdbc-postgres = { path = "../rsdbc-postgres", version = "0.0.1" }
+rsdbc-sqlite = { path = "../rsdbc-sqlite", version = "0.0.1" }
+clap = "2.34.0"

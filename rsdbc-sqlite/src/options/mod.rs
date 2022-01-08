@@ -18,18 +18,18 @@ use std::{borrow::Cow, time::Duration};
 use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
-use crate::{SqliteConnection, to_r2dbc_err};
+use crate::{SqliteConnection, to_rsdbc_err};
 use crate::Result;
 use futures::future::BoxFuture;
 use rusqlite::{Connection, OpenFlags};
 use std::sync::{Arc, Mutex};
 use rusqlite::params;
 use std::rc::Rc;
-use r2dbc_core::connection::{ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions};
-use r2dbc_core::error::R2dbcErrors;
+use rsdbc_core::connection::{ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions};
+use rsdbc_core::error::RsdbcErrors;
 
 // // TODO:
-// // - ^ the trait `From<rusqlite::Error>` is not implemented for `r2dbc::Error`
+// // - ^ the trait `From<rusqlite::Error>` is not implemented for `rsdbc::Error`
 // impl From<RusqliteError> for Error {
 //     fn from(err: rusqlite::Error) -> Self {
 //         Error::General(err.to_string())
@@ -180,7 +180,7 @@ impl SqliteConnectOptions {
 
 impl ConnectionFactory for SqliteConnectOptions {
     // fn connect(&self) -> BoxFuture<'_, Result<Box<SqliteConnection>>>
-    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<(dyn r2dbc_core::connection::Connection + 'static)>>> + Send>>
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<(dyn rsdbc_core::connection::Connection + 'static)>>> + Send>>
     {
         todo!()
         // Box::pin(async move {
@@ -206,7 +206,7 @@ impl ConnectionFactory for SqliteConnectOptions {
         //
         //     let conn =
         //         rusqlite::Connection::open_with_flags(self.filename.to_path_buf(), flags)
-        //             .map_err(to_r2dbc_err)?;
+        //             .map_err(to_rsdbc_err)?;
         //
         //     conn.busy_timeout(self.busy_timeout);
         //
@@ -219,13 +219,13 @@ impl ConnectionFactory for SqliteConnectOptions {
         //         self.synchronous.as_str(),
         //         self.auto_vacuum.as_str(),
         //     );
-        //     conn.execute(init.as_str(), params![]).map_err(to_r2dbc_err)?;
+        //     conn.execute(init.as_str(), params![]).map_err(to_rsdbc_err)?;
         //
         //     // // TODO: make this better
         //     // Ok(Box::new(SqliteConnection {
         //     //     // conn: Mutex::new(Some(&conn)),
         //     //     conn: Some(Arc::new(Mutex::new(conn))),
-        //     // }) as Box<(dyn r2dbc_core::connection::Connection + 'static)>)
+        //     // }) as Box<(dyn rsdbc_core::connection::Connection + 'static)>)
         //
         //     todo!()
         //

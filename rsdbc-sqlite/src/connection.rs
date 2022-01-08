@@ -1,17 +1,17 @@
 use futures::future::BoxFuture;
-use r2dbc_core::connection::{Batch, Connection, ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions, ConnectionFactoryProvider, ConnectionMetadata, IsolationLevel, Statement, ValidationDepth};
-use r2dbc_core::error::R2dbcErrors;
-use r2dbc_core::OptionValue;
-use crate::error::SqliteR2dbcError;
+use rsdbc_core::connection::{Batch, Connection, ConnectionFactory, ConnectionFactoryMetadata, ConnectionFactoryOptions, ConnectionFactoryProvider, ConnectionMetadata, IsolationLevel, Statement, ValidationDepth};
+use rsdbc_core::error::RsdbcErrors;
+use rsdbc_core::OptionValue;
+use crate::error::SqliteRsdbcError;
 use crate::options::SqliteConnectOptions;
 
 pub struct SqliteConnection;
 impl Connection for SqliteConnection {
-    fn begin_transaction(&mut self) -> r2dbc_core::Result<()> {
+    fn begin_transaction(&mut self) -> rsdbc_core::Result<()> {
         todo!()
     }
 
-    fn close(&mut self) -> r2dbc_core::Result<()> {
+    fn close(&mut self) -> rsdbc_core::Result<()> {
         todo!()
     }
 
@@ -19,7 +19,7 @@ impl Connection for SqliteConnection {
         todo!()
     }
 
-    fn create_batch(&mut self) -> r2dbc_core::Result<Box<dyn Batch>> {
+    fn create_batch(&mut self) -> rsdbc_core::Result<Box<dyn Batch>> {
         todo!()
     }
 
@@ -27,7 +27,7 @@ impl Connection for SqliteConnection {
         todo!()
     }
 
-    fn create_statement(&mut self, sql: &str) -> r2dbc_core::Result<Box<dyn Statement<'_> + '_>> {
+    fn create_statement(&mut self, sql: &str) -> rsdbc_core::Result<Box<dyn Statement<'_> + '_>> {
         todo!()
     }
 
@@ -35,7 +35,7 @@ impl Connection for SqliteConnection {
         todo!()
     }
 
-    fn metadata(&mut self) -> r2dbc_core::Result<Box<dyn ConnectionMetadata>> {
+    fn metadata(&mut self) -> rsdbc_core::Result<Box<dyn ConnectionMetadata>> {
         todo!()
     }
 
@@ -89,7 +89,7 @@ pub struct SqliteConnectionFactory {
 }
 
 impl ConnectionFactory for SqliteConnectionFactory {
-    fn connect(&self) -> BoxFuture<'_, r2dbc_core::Result<Box<dyn Connection>>> {
+    fn connect(&self) -> BoxFuture<'_, rsdbc_core::Result<Box<dyn Connection>>> {
         todo!()
     }
 
@@ -103,7 +103,7 @@ impl ConnectionFactory for SqliteConnectionFactory {
 impl ConnectionFactoryProvider for SqliteConnectionFactory {
     type C = SqliteConnectionFactory;
 
-    fn create(connection_factory_options: ConnectionFactoryOptions) -> r2dbc_core::Result<Self::C> {
+    fn create(connection_factory_options: ConnectionFactoryOptions) -> rsdbc_core::Result<Self::C> {
         // TODO: map options to sqlite options
         // TODO: prefer non-consuming builder - https://doc.rust-lang.org/1.0.0/style/ownership/builders.html
         let mut sqlite_options = SqliteConnectOptions::new();
@@ -126,7 +126,7 @@ impl ConnectionFactoryProvider for SqliteConnectionFactory {
                 sqlite_options = sqlite_options.filename(protocol_value);
             }
         } else {
-            return Err(R2dbcErrors::from(SqliteR2dbcError::InvalidProtocol("".to_string())));
+            return Err(RsdbcErrors::from(SqliteRsdbcError::InvalidProtocol("".to_string())));
         }
 
         Ok(SqliteConnectionFactory {
