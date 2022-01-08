@@ -15,7 +15,7 @@ jobs:
       - name: Publish
         run: |
           cargo login ${{ secrets.CARGO_API_KEY }}
-          cd rsdbc
+          cd rsdbc-core
           cargo publish
           sleep 15
           cd ../rsdbc-mysql
@@ -25,5 +25,7 @@ jobs:
           cd ../rsdbc-sqlite
           cargo publish
           sleep 15
+          cd ../rsdbc
+          cargo publish
           cd ../rsdbc-cli
           cargo publish
