@@ -179,46 +179,34 @@ impl ConnectionFactoryOptions {
 impl FromStr for ConnectionFactoryOptions {
     type Err = RsdbcErrors;
 
+    // driver[:protocol]}://[user:password@]host[:port][/path][?option=value]}
     // TODO: clean this up
     fn from_str(s: &str) -> Result<Self> {
-        let u = Url::parse(s)?;
-        println!("{}", u);
-        println!("path: {}", u.path());
-        println!("host: {}", u.host_str().unwrap());
-        println!("domain: {}", u.domain().unwrap());
-        println!("fragment: {}", u.fragment().or(Some("")).unwrap());
-        println!("scheme: {}", u.scheme());
-
         validate(&s)?;
 
-        // let scheme_parts: Vec<&str> = s.splitn(3, ":").collect();
-        // let scheme = scheme_parts[0];
-        // let driver = scheme_parts[1];
-        // let protocol = scheme_parts[2];
+        let parts: Vec<&str> = s.splitn(2, ":").collect();
+        let driver = parts[0];
+        let protocol = parts[1];
 
-        // TODO: use .ok_or here instead?
-        // let scheme_specific_part_index = s.find("://").unwrap();
-        // let rewritten_url = scheme.to_owned() + &s[scheme_specific_part_index..];
-        // let uri = Url::parse(rewritten_url.as_str())?;
-        let uri = Url::parse(s)?;
+        let scheme_specific_index = s.find("://").unwrap();
+        let rewritten_url = driver.to_string() + &s[scheme_specific_index..];
+        let uri = Url::parse(rewritten_url.as_str())?;
+
+        // builder.option(ConnectionFactoryOptions.DRIVER, driver);
 
         // TODO: builder
         let mut connection_factory_builder = ConnectionFactoryOptionsBuilder::new();
         // TODO: ssl?
 
-
         connection_factory_builder.add_option("driver", uri.scheme().into());
 
-        // connection_factory_builder.add_option("driver", driver.into());
-
-        // let protocol_end = protocol.find("://");
-        // if let Some(protocol_end) = protocol_end {
-        //     let protocol_bits = &protocol[..protocol_end];
-        //     if !protocol_bits.trim().is_empty() {
-        //         connection_factory_builder.add_option("protocol", protocol_bits.into());
-        //     }
-        // }
-
+        let protocol_end = protocol.find("://");
+        if let Some(protocol_end) = protocol_end {
+            let protocol_bits = &protocol[..protocol_end];
+            if !protocol_bits.trim().is_empty() {
+                connection_factory_builder.add_option("protocol", protocol_bits.into());
+            }
+        }
 
         if uri.has_host() {
             connection_factory_builder.add_option("host", uri.host_str().unwrap().into());
@@ -235,7 +223,6 @@ impl FromStr for ConnectionFactoryOptions {
             connection_factory_builder.add_option("port", port.into());
         }
 
-        // TODO: validate this
         if !uri.path().is_empty() {
             connection_factory_builder.add_option("database", uri.path().into());
         }
@@ -245,7 +232,6 @@ impl FromStr for ConnectionFactoryOptions {
             connection_factory_builder.add_option(k, v.into());
 
         }
-
 
         Ok(connection_factory_builder.build())
     }
@@ -511,6 +497,13 @@ pub trait Transaction {
 
 
 fn validate(url: &str) -> Result<()> {
+
+    // empty string
+    // scheme
+    // has driver
+
+    // path aka database? is this required for all drivers?
+
     Ok(())
 }
 
@@ -729,9 +722,27 @@ mod tests {
     }
 
     #[test]
+    fn hmm() {
+        let result = ConnectionFactoryOptions::parse("mysql:memory://admin:password@localhost/test");
+        assert!(result.is_ok());
+
+        println!("{:?}", result.unwrap());
+    }
+
+    #[test]
     fn parse_empty_string_should_return_err() {
         let result = ConnectionFactoryOptions::parse("");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_malformed_string_should_return_err() {
+        // TODO: implement
+        // assertThatThrownBy(() -> ConnectionUrlParser.validate("r2dbc://host")).isInstanceOf(IllegalArgumentException.class);
+        // assertThatThrownBy(() -> ConnectionUrlParser.validate("r2dbc:://host")).isInstanceOf(IllegalArgumentException.class);
+        // assertThatThrownBy(() -> ConnectionUrlParser.validate("r2dbc: ://host")).isInstanceOf(IllegalArgumentException.class);
+        // assertThatThrownBy(() -> ConnectionUrlParser.validate("r2dbc:host")).isInstanceOf(IllegalArgumentException.class);
+        // assertThatThrownBy(() -> ConnectionUrlParser.validate("r2dbc:/host")).isInstanceOf(IllegalArgumentException.class);
     }
 
     #[test]
@@ -739,4 +750,78 @@ mod tests {
         let result: Result<ConnectionFactoryOptions> = "postgres://admin:password@localhost/test".parse();
         assert!(result.is_ok());
     }
+
+
+
+
+//     @Test
+//     void shouldParseSingleHostUrl() {
+// assertThat(parseQuery("r2dbc:foo://myhost")).hasDriver("foo").hasNotOption(ConnectionFactoryOptions.SSL).hasNoProtocol().hasHost("myhost").hasNoPort().hasNoDatabase().hasNotOption(ConnectionFactoryOptions.SSL);
+// }
+//
+//     @Test
+//     void shouldParseSecure() {
+// assertThat(parseQuery("r2dbcs:foo://myhost")).hasDriver("foo").hasOption(ConnectionFactoryOptions.SSL).hasHost("myhost").hasNoPort().hasNoDatabase();
+// }
+//
+//     @Test
+//     void shouldParseSingleHostUrlWithProtocol() {
+// assertThat(parseQuery("r2dbc:foo:bar://myhost")).hasDriver("foo").hasProtocol("bar").hasHost("myhost").hasNoPort().hasNoDatabase().hasNotOption(ConnectionFactoryOptions.SSL);
+// }
+//
+//     @Test
+//     void shouldParseSingleHostAndPort() {
+// assertThat(parseQuery("r2dbc:foo://myhost:4711")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasPort(4711).hasNoUser().hasNoDatabase();
+// }
+//
+//     @Test
+//     void hasMultipleHosts() {
+// assertThat(parseQuery("r2dbc:foo://host1,host2")).hasDriver("foo").hasNoProtocol().hasHost("host1,host2").hasNoPort().hasNoUser().hasNoDatabase();
+// assertThat(parseQuery("r2dbc:foo://host1:123,host2:456")).hasDriver("foo").hasNoProtocol().hasHost("host1:123,host2:456").hasNoPort().hasNoUser().hasNoDatabase();
+// }
+//
+//     @Test
+//     void hasAuthentication() {
+// assertThat(parseQuery("r2dbc:foo://user:password@myhost:4711")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasPort(4711).hasUser("user").hasPassword("password").hasNoDatabase();
+// assertThat(parseQuery("r2dbc:foo://user:p@ssword@myhost:4711")).hasDriver("foo").hasNoProtocol().hasHost("myhost:4711").hasUser("user").hasPassword("p@ssword").hasNoDatabase();
+// assertThat(parseQuery("r2dbc:foo://user@myhost:4711")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasPort(4711).hasUser("user").hasNoPassword().hasNoDatabase();
+// assertThat(parseQuery("r2dbc:foo://user:@myhost:4711")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasPort(4711).hasUser("user").hasNoPassword().hasNoDatabase();
+// assertThat(parseQuery("r2dbc:foo://:password@myhost:4711")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasPort(4711).hasNoUser().hasPassword("password").hasNoDatabase();
+// assertThat(parseQuery("r2dbc:foo://@myhost:4711")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasPort(4711).hasNoUser().hasNoPassword().hasNoDatabase();
+// assertThat(parseQuery("r2dbc:foo://:@myhost:4711")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasPort(4711).hasNoUser().hasNoPassword().hasNoDatabase();
+//
+// assertThat(parseQuery("r2dbc:foo://a%26b%26f%3Ac%3Dd:password%204%21@myhost:4711")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasPassword("password 4!").hasPort(4711).hasUser("a&b" +
+// "&f:c=d").hasNoDatabase();
+// }
+//
+//     @Test
+//     void hasMultipleHostsWithAuthentication() {
+// assertThat(parseQuery("r2dbc:foo://user:password@host1,host2")).hasDriver("foo").hasNoProtocol().hasHost("host1,host2").hasNoPort().hasUser("user").hasNoDatabase();
+// assertThat(parseQuery("r2dbc:foo://user:password@host1:123,host2:456")).hasDriver("foo").hasNoProtocol().hasHost("host1:123,host2:456").hasNoPort().hasUser("user").hasNoDatabase();
+// }
+//
+//     @Test
+//     void hasDatabase() {
+// assertThat(parseQuery("r2dbc:foo://myhost/")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasNoPort().hasNoDatabase();
+// assertThat(parseQuery("r2dbc:foo://myhost/database")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasNoPort().hasDatabase("database");
+// assertThat(parseQuery("r2dbc:foo://myhost/a%26b%26c%3Dd")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasNoPort().hasDatabase("a&b&c=d");
+// }
+//
+//     @Test
+//     void parsesQueryString() {
+// assertThat(parseQuery("r2dbc:foo://myhost/database?foo=bar")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasNoPort().hasDatabase("database").hasOption("foo", "bar");
+// assertThat(parseQuery("r2dbc:foo://myhost/database?foo=a%26b%26c%3Dd")).hasDriver("foo").hasNoProtocol().hasHost("myhost").hasNoPort().hasDatabase("database").hasOption("foo", "a&b&c=d");
+// }
+//
+//     @Test
+//     void rejectsWellKnownPropertiesInQueryString() {
+//
+// assertThatThrownBy(() -> parseQuery("r2dbc:foo://myhost/database?driver=foo")).isInstanceOf(IllegalArgumentException.class);
+// assertThatThrownBy(() -> parseQuery("r2dbc:foo://myhost/database?protocol=foo")).isInstanceOf(IllegalArgumentException.class);
+// assertThatThrownBy(() -> parseQuery("r2dbc:foo://myhost/database?user=foo")).isInstanceOf(IllegalArgumentException.class);
+// assertThatThrownBy(() -> parseQuery("r2dbc:foo://myhost/database?password=foo")).isInstanceOf(IllegalArgumentException.class);
+// assertThatThrownBy(() -> parseQuery("r2dbc:foo://myhost/database?host=foo")).isInstanceOf(IllegalArgumentException.class);
+// assertThatThrownBy(() -> parseQuery("r2dbc:foo://myhost/database?port=foo")).isInstanceOf(IllegalArgumentException.class);
+// assertThatThrownBy(() -> parseQuery("r2dbc:foo://myhost/database?database=foo")).isInstanceOf(IllegalArgumentException.class);
+// }
 }

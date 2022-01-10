@@ -24,7 +24,7 @@ pub enum RsdbcErrors {
     ParseIntError(#[from] ParseIntError),
 
     #[error("Unknown Database")]
-    UnknownDatabase,
+    UnknownDatabase, // UnsupportedScheme
 }
 
 impl RsdbcErrors {
